@@ -1,8 +1,8 @@
-# ![BitLab](public/bitlab-logo-black.svg)
+# <picture><source media="(prefers-color-scheme: dark)" srcset="public/bitlab-logo-white.svg"><source media="(prefers-color-scheme: light)" srcset="public/bitlab-logo-black.svg"><img alt="BitLab" src="public/bitlab-logo-black.svg"></picture>
 
 ## Generative Pixel Playground
 
-BitLab is a generative art workbench built with React, p5.js, Tailwind, and RetroUI. Mix pixel iconography, palette theory, and motion envelopes to create richly layered sprite compositions in real time. BitLab ships with theme cycling, palette randomisation, blend-mode experiments, and a curated icon library sourced from [pixelarticons](https://github.com/halfmage/pixelarticons).
+BitLab is a generative art workbench built with React, p5.js, Tailwind, and RetroUI. Mix pixel iconography, palette theory, and motion envelopes to create richly layered sprite compositions in real time. BitLab ships with theme cycling, RetroUI shape toggling (Box / Rounded), palette randomisation, blend‑mode experiments, and a curated icon library sourced from [pixelarticons](https://github.com/halfmage/pixelarticons).
 
 ---
 
@@ -21,15 +21,15 @@ BitLab is a generative art workbench built with React, p5.js, Tailwind, and Retr
 
 ## Features
 
-- **Generative Sprite Canvas** – Multi-layer sprite engine with p5.js, configurable density, scale, palette variance, and animation speed.
-- **Expanded Sprite Modes** – Pixel glass mosaics, geometric motifs (circle, square, triangle, hexagon), and fresh outlines like rings, diamonds, stars, and neon lines.
-- **Movement Library** – Ten motion envelopes (spiral, comet, wavefront, etc.) plus a per-project animation speed slider for slow cinematic drifts or rapid energy.
-- **Icon Modes** – Toggle to the curated `pixelarticons` library with inline preview and one-click randomisation.
-- **Blend Architectures** – Layer-specific blend modes (multiply, screen, hard light, overlay) with optional per-sprite randomisation switch.
-- **Theme Designer** – System/light/dark cycling, colour-accent dropdown, and BitLab box chassis styled with RetroUI.
-- **Palette Lab** – Synthwave, neon, pastel and bespoke palettes with jitter controls to push hue, saturation, and luminance.
-- **Session Metrics** – Live seed, palette, motif, blend mode, motion speed, and FPS readouts for reproducibility.
-- **Responsive RetroUI** – RetroUI components reskinned with Tailwind-driven theming across desktop, tablet, and narrow layouts.
+- **Generative Sprite Canvas** – Multi-layer sprite engine with p5.js, configurable density, scale spread, palette variance, and animation speed.
+- **Expanded Sprite Modes** – Pixel glass mosaics, geometric motifs (circle, square, triangle, hexagon), plus outlines like rings, diamonds, stars, neon lines, and comet trails.
+- **Motion Library** – Ten envelopes (sway, spiral, comet, wavefront, etc.) with smoother comet tails and a master animation-speed dial.
+- **Icon Mode** – Curated pixelarticons catalogue with contextual dropdown and live preview aligned to the selector.
+- **Blend Architectures** – Layer-specific blend modes (multiply, screen, hard light, overlay) with optional per-sprite randomisation.
+- **Theme Designer** – System/light/dark cycling, colour-accent select, and RetroUI Box/Rounded chassis toggle applied globally.
+- **Palette Lab** – Synthwave, neon, pastel, and bespoke palettes with jitter controls to push hue, saturation, and luminance.
+- **Session Metrics** – Live seed, palette, sprite mode, blend mode, motion speed, and FPS readouts for reproducibility.
+- **Responsive RetroUI** – Official RetroUI wrappers (Button, Card, Select, Switch, Tabs) themed with Tailwind for consistent retro styling across breakpoints.
 
 ---
 
@@ -37,12 +37,12 @@ BitLab is a generative art workbench built with React, p5.js, Tailwind, and Retr
 
 | Area | Highlights |
 | ---- | ---------- |
-| **Header** | Animated BitLab logomark and a cycling theme toggle (system → light → dark) alongside a GitHub star button. |
-| **Controls Panel** | Split into sprite controls and FX tooling. Sliders cover density, scale spread, palette variance, motion intensity, and animation speed. |
-| **Icon Selection** | When in **Icon** mode, a dropdown reveals the entire pixel icon catalogue with preview thumbnail. |
-| **Utilities** | Full-width buttons for randomising icons, palettes, scale, motion, blend, plus a full reset and “randomise all” macro. |
-| **Theme Styling** | Select menu customises colourway (Sunburst, Neon Grid, Nebula, Ember Glow, Lagoon Tide, Rose Quartz) alongside the system/light/dark toggle. |
-| **Canvas** | p5.js renders layered sprites, with status chips reporting live seed, palette, motif, blend mode, motion speed, and FPS. |
+| **Header** | GitHub-aware logo, accent selector, Box/Rounded toggle, and a cycling system → light → dark icon button. |
+| **Controls Panel** | Tabs for Sprites / FX / Motion (Motion gets its own column on wide viewports). Sliders cover density, scale spread, palette variance, motion intensity, and animation speed. |
+| **Icon Selection** | In **Icon** mode, a contextual panel shows the label, preview box, and dropdown aligned on a single row. |
+| **Utilities** | Full-width buttons for randomising sprites, palettes, scale, motion, blend, plus a full reset and “randomise all” macro. |
+| **Theme Styling** | Colourway select (Sunburst, Neon Grid, Nebula, Ember Glow, Lagoon Tide, Rose Quartz) with system/light/dark button and Box/Rounded toggle. |
+| **Canvas** | p5.js renders layered sprites with status chips reporting seed, palette, sprite mode, blend mode, motion speed, and FPS. |
 | **Session Notes** | Quick tips with links to pixelarticons, p5.js, and RetroUI docs for deeper exploration. |
 
 ---

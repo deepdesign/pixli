@@ -1,128 +1,64 @@
-import { createContext, useCallback, useContext, useId, useMemo, useState, type PropsWithChildren } from 'react'
+import { cn } from '@/lib/utils'
 
-const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ')
+import {
+  Tab,
+  TabGroup,
+  TabList,
+  TabPanels,
+  TabPanel,
+  type TabGroupProps,
+  type TabListProps,
+  type TabPanelsProps,
+} from '@headlessui/react'
+import type { ReactNode } from 'react'
 
-type TabsContextValue = {
-  value: string | null
-  setValue: (value: string) => void
-  baseId: string
-  orientation: 'horizontal' | 'vertical'
-}
+type TabsProps = TabGroupProps<'div'>
 
-const TabsContext = createContext<TabsContextValue | undefined>(undefined)
+export const Tabs = ({ children, ...props }: TabsProps) => <TabGroup {...props}>{children}</TabGroup>
 
-const useTabsContext = () => {
-  const context = useContext(TabsContext)
-  if (!context) {
-    throw new Error('Tabs components must be used within <Tabs>')
-  }
-  return context
-}
+type TabsTriggerListProps = TabListProps<'div'> & { className?: string; children: ReactNode }
 
-interface TabsProps {
-  defaultValue?: string
-  value?: string
-  onValueChange?: (value: string) => void
-  className?: string
-  orientation?: 'horizontal' | 'vertical'
-}
-
-export const Tabs = ({
-  children,
-  defaultValue,
-  value: controlledValue,
-  onValueChange,
-  className,
-  orientation = 'horizontal',
-}: PropsWithChildren<TabsProps>) => {
-  const isControlled = typeof controlledValue !== 'undefined'
-  const [uncontrolled, setUncontrolled] = useState<string | null>(defaultValue ?? null)
-  const value = (isControlled ? controlledValue : uncontrolled) ?? null
-  const baseId = useId()
-
-  const setValue = useCallback(
-    (next: string) => {
-      if (!isControlled) {
-        setUncontrolled(next)
-      }
-      onValueChange?.(next)
-    },
-    [isControlled, onValueChange],
-  )
-
-  const context = useMemo(() => ({ value, setValue, baseId, orientation }), [value, setValue, baseId, orientation])
-
-  return (
-    <TabsContext.Provider value={context}>
-      <div className={className}>{children}</div>
-    </TabsContext.Provider>
-  )
-}
-
-interface TabsTriggerListProps {
-  className?: string
-}
-
-export const TabsTriggerList = ({ children, className }: PropsWithChildren<TabsTriggerListProps>) => (
-  <div role="tablist" className={className}>
+export const TabsTriggerList = ({ children, className, ...props }: TabsTriggerListProps) => (
+  <TabList className={cn('retro-tabs', className)} {...props}>
     {children}
-  </div>
+  </TabList>
 )
 
-interface TabsTriggerProps {
-  value: string
+type PrimitiveTabProps = React.ComponentProps<typeof Tab>
+
+interface TabsTriggerProps extends Omit<PrimitiveTabProps, 'className' | 'children'> {
   className?: string
+  children: ReactNode
 }
 
-export const TabsTrigger = ({ value, children, className }: PropsWithChildren<TabsTriggerProps>) => {
-  const { value: activeValue, setValue, baseId } = useTabsContext()
-  const isActive = activeValue === value
-  const triggerId = `${baseId}-trigger-${value}`
-  const panelId = `${baseId}-panel-${value}`
-
-  return (
-    <button
-      type="button"
-      id={triggerId}
-      role="tab"
-      aria-selected={isActive}
-      aria-controls={panelId}
-      className={cx('retro-tab', className, isActive && 'retro-tab-active')}
-      onClick={() => setValue(value)}
-    >
-      {children}
-    </button>
-  )
-}
-
-interface TabsPanelsProps {
-  className?: string
-}
-
-export const TabsPanels = ({ children, className }: PropsWithChildren<TabsPanelsProps>) => (
-  <div className={className}>{children}</div>
+export const TabsTrigger = ({ className, children, ...props }: TabsTriggerProps) => (
+  <Tab
+    {...props}
+    className={({ selected }: { selected: boolean }) =>
+      cn('retro-tab', selected && 'retro-tab-active', className)
+    }
+  >
+    {children}
+  </Tab>
 )
 
-interface TabsContentProps {
-  value: string
+type PrimitiveTabPanelsProps = TabPanelsProps<'div'> & { className?: string; children: ReactNode }
+
+export const TabsPanels = ({ className, children, ...props }: PrimitiveTabPanelsProps) => (
+  <TabPanels className={className} {...props}>
+    {children}
+  </TabPanels>
+)
+
+type PrimitiveTabPanelProps = React.ComponentProps<typeof TabPanel>
+
+interface TabsContentProps extends Omit<PrimitiveTabPanelProps, 'className' | 'children'> {
   className?: string
+  children: ReactNode
 }
 
-export const TabsContent = ({ value, children, className }: PropsWithChildren<TabsContentProps>) => {
-  const { value: activeValue, baseId } = useTabsContext()
-  const isActive = activeValue === value
-  const panelId = `${baseId}-panel-${value}`
-  const triggerId = `${baseId}-trigger-${value}`
-
-  return (
-    <div
-      id={panelId}
-      role="tabpanel"
-      aria-labelledby={triggerId}
-      hidden={!isActive}
-      className={cx('tab-panel', className)}
-    >
-      {children}
-    </div>
-  )
-}
+export const TabsContent = ({ className, children, ...props }: TabsContentProps) => (
+  <TabPanel className={cn('tab-panel', className)} {...props}>
+    {children}
+  </TabPanel>
+)

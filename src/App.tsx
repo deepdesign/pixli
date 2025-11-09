@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Button, Card } from 'pixel-retroui'
-
+import { Button } from './components/retroui/Button'
+import { Card } from './components/retroui/Card'
 import { Tabs, TabsTriggerList, TabsTrigger, TabsPanels, TabsContent } from './components/retroui/Tab'
 import { Switch } from './components/retroui/Switch'
 import {
@@ -22,21 +22,8 @@ import {
   type BackgroundMode,
 } from './generator'
 import { getPixelArtIconById, pixelArtIconAssets } from './data/pixelartIconAssets'
+import { Moon, Monitor, Sun } from 'lucide-react'
 import { palettes } from './data/palettes'
-const BUTTON_PRIMARY = {
-  bg: 'var(--btn-primary-bg)',
-  textColor: 'var(--btn-primary-text)',
-  shadow: 'var(--btn-primary-shadow)',
-  borderColor: 'var(--btn-primary-border)',
-}
-
-const BUTTON_SECONDARY = {
-  bg: 'var(--btn-secondary-bg)',
-  textColor: 'var(--btn-secondary-text)',
-  shadow: 'var(--btn-secondary-shadow)',
-  borderColor: 'var(--btn-secondary-border)',
-}
-
 const BLEND_MODES: BlendModeOption[] = ['NONE', 'MULTIPLY', 'SCREEN', 'HARD_LIGHT', 'OVERLAY']
 const BACKGROUND_OPTIONS = [
   { value: 'palette', label: 'Palette (auto)' },
@@ -52,6 +39,7 @@ type ThemeColor = 'amber' | 'mint' | 'violet' | 'ember' | 'lagoon' | 'rose'
 
 const THEME_MODE_STORAGE_KEY = 'retro-theme-mode'
 const THEME_COLOR_STORAGE_KEY = 'retro-theme-color'
+const THEME_SHAPE_STORAGE_KEY = 'retro-theme-shape'
 const THEME_COLOR_OPTIONS: Array<{ value: ThemeColor; label: string }> = [
   { value: 'amber', label: 'Sunburst' },
   { value: 'mint', label: 'Neon Grid' },
@@ -295,6 +283,14 @@ const getStoredThemeColor = (): ThemeColor => {
     : 'amber'
 }
 
+const getStoredThemeShape = (): 'box' | 'rounded' => {
+  if (typeof window === 'undefined') {
+    return 'box'
+  }
+  const stored = window.localStorage.getItem(THEME_SHAPE_STORAGE_KEY)
+  return stored === 'rounded' ? 'rounded' : 'box'
+}
+
 const App = () => {
   const sketchContainerRef = useRef<HTMLDivElement | null>(null)
   const controllerRef = useRef<SpriteController | null>(null)
@@ -302,13 +298,15 @@ const App = () => {
   const [frameRate, setFrameRate] = useState<number>(60)
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => getStoredThemeMode())
   const [themeColor, setThemeColor] = useState<ThemeColor>(() => getStoredThemeColor())
+  const [themeShape, setThemeShape] = useState<'box' | 'rounded'>(() => getStoredThemeShape())
   const [clusterPreset, setClusterPreset] = useState<'single' | 'nebula' | 'minimal' | 'shuffle'>('shuffle')
-  const [controlTab, setControlTab] = useState<'sprites' | 'fx'>('sprites')
+  const [controlTabIndex, setControlTabIndex] = useState(0)
   const isStudioLayout = useMediaQuery('(min-width: 1760px)')
   const themeColorLabel = useMemo(
     () => THEME_COLOR_OPTIONS.find((option) => option.value === themeColor)?.label ?? THEME_COLOR_OPTIONS[0].label,
     [themeColor],
   )
+  const themeShapeLabel = useMemo(() => (themeShape === 'rounded' ? 'Rounded' : 'Box'), [themeShape])
 
   const cycleThemeMode = useCallback(() => {
     setThemeMode((prev) => {
@@ -329,14 +327,14 @@ const App = () => {
     }
   }, [themeMode])
 
-  const themeModeIcon = useMemo(() => {
+  const ThemeModeIcon = useMemo(() => {
     switch (themeMode) {
       case 'light':
-        return '☀'
+        return Sun
       case 'dark':
-        return '☾'
+        return Moon
       default:
-        return '◎'
+        return Monitor
     }
   }, [themeMode])
 
@@ -351,6 +349,12 @@ const App = () => {
     if (!spriteState) return SPRITE_MODES[0].label
     return SPRITE_MODES.find((mode) => mode.value === spriteState.spriteMode)?.label ?? SPRITE_MODES[0].label
   }, [spriteState])
+
+  useEffect(() => {
+    if (isStudioLayout && controlTabIndex > 1) {
+      setControlTabIndex(0)
+    }
+  }, [controlTabIndex, isStudioLayout])
 
   const currentIconAsset = useMemo(() => {
     if (!spriteState || spriteState.spriteMode !== 'icon') {
@@ -416,6 +420,10 @@ const App = () => {
     }
   }, [])
 
+  const handleShapeSelect = useCallback((value: string) => {
+    setThemeShape(value === 'rounded' ? 'rounded' : 'box')
+  }, [])
+
   const randomiseCluster = useCallback(() => {
     controllerRef.current?.randomizeCluster()
   }, [])
@@ -466,7 +474,7 @@ const App = () => {
   const statusBlend = spriteState ? formatBlendMode(spriteState.blendMode as BlendModeOption) : 'None'
   const statusMotion = spriteState ? formatMovementMode(spriteState.movementMode) : 'Sway'
 
-  const applyDocumentTheme = useCallback((mode: ThemeMode, color: ThemeColor) => {
+  const applyDocumentTheme = useCallback((mode: ThemeMode, color: ThemeColor, shape: 'box' | 'rounded') => {
     if (typeof document === 'undefined') {
       return
     }
@@ -479,27 +487,27 @@ const App = () => {
     root.setAttribute('data-theme-mode', mode)
     root.setAttribute('data-theme', resolved)
     root.setAttribute('data-theme-color', color)
-    root.setAttribute('data-theme-shape', 'box')
+    root.setAttribute('data-theme-shape', shape)
     root.style.setProperty('color-scheme', resolved)
   }, [])
 
   useLayoutEffect(() => {
-    applyDocumentTheme(themeMode, themeColor)
-  }, [applyDocumentTheme, themeMode, themeColor])
+    applyDocumentTheme(themeMode, themeColor, themeShape)
+  }, [applyDocumentTheme, themeMode, themeColor, themeShape])
 
   useEffect(() => {
     if (themeMode !== 'system' || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return
     }
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => applyDocumentTheme('system', themeColor)
+    const handler = () => applyDocumentTheme('system', themeColor, themeShape)
     if (typeof media.addEventListener === 'function') {
       media.addEventListener('change', handler)
       return () => media.removeEventListener('change', handler)
     }
     media.addListener(handler)
     return () => media.removeListener(handler)
-  }, [applyDocumentTheme, themeColor, themeMode])
+  }, [applyDocumentTheme, themeColor, themeMode, themeShape])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -515,6 +523,13 @@ const App = () => {
     window.localStorage.setItem(THEME_COLOR_STORAGE_KEY, themeColor)
   }, [themeColor])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.localStorage.setItem(THEME_SHAPE_STORAGE_KEY, themeShape)
+  }, [themeShape])
+
   const renderSpriteControls = () => {
     if (!spriteState) {
       return null
@@ -525,13 +540,36 @@ const App = () => {
           <h3 className="section-title">Generation</h3>
           <ControlSelect
             id="render-mode"
-            label="Render Mode"
+            label="Select Sprites"
             value={spriteState.spriteMode}
             onChange={(value) => handleModeChange(value as SpriteMode)}
             disabled={!ready}
             options={SPRITE_MODES.map((mode) => ({ value: mode.value, label: mode.label }))}
             tooltip="Swap between pixel mosaics, geometric sprite layers, or a single icon motif."
           />
+          {spriteState.spriteMode === 'icon' && (
+            <div className="icon-context">
+              {currentIconAsset && (
+                <div className="icon-context-preview">
+                  <img src={currentIconAsset.url} alt={currentIconAsset.label} width={28} height={28} />
+                </div>
+              )}
+              <ControlSelect
+                id="library-icon"
+                label="Library Icon"
+                value={spriteState.iconAssetId}
+                onChange={handleIconAssetSelect}
+                disabled={!ready}
+                options={pixelArtIconAssets.map((assetOption) => ({
+                  value: assetOption.id,
+                  label: assetOption.label,
+                }))}
+                placeholder="Select Icon"
+                tooltip="Choose the pixelarticons asset rendered for icon mode outputs."
+                currentLabel={currentIconAsset?.label}
+              />
+            </div>
+          )}
 
           <ControlSlider
             id="density-range"
@@ -596,42 +634,8 @@ const App = () => {
           )}
         </div>
 
-        {spriteState.spriteMode === 'icon' && (
-          <div className="section">
-            <h3 className="section-title">Icon Selection</h3>
-            <p className="section-hint">Choose one icon from the Pixelarticons library.</p>
-            <div className="icon-selector">
-              {currentIconAsset && (
-                <div className="icon-selector-preview">
-                  <img src={currentIconAsset.url} alt={currentIconAsset.label} width={28} height={28} />
-                </div>
-              )}
-              <ControlSelect
-                id="library-icon"
-                label="Library Icon"
-                value={spriteState.iconAssetId}
-                onChange={handleIconAssetSelect}
-                disabled={!ready}
-                options={pixelArtIconAssets.map((assetOption) => ({
-                  value: assetOption.id,
-                  label: assetOption.label,
-                }))}
-                placeholder="Select Icon"
-                tooltip="Choose the pixelarticons asset rendered for icon mode outputs."
-                currentLabel={currentIconAsset?.label}
-              />
-            </div>
-          </div>
-        )}
-
         <div className="panel-footer">
-          <Button
-            {...BUTTON_PRIMARY}
-            type="button"
-            className="panel-footer-button"
-            onClick={handleRandomiseAll}
-            disabled={!ready}
-          >
+          <Button type="button" className="panel-footer-button" onClick={handleRandomiseAll} disabled={!ready}>
             Randomise All
           </Button>
         </div>
@@ -639,16 +643,15 @@ const App = () => {
     )
   }
 
-  const renderFxControls = () => {
+  const renderMotionControls = (showHeading: boolean) => {
     if (!spriteState) {
       return null
     }
-    const blendAutoLabelId = 'blend-auto-label'
 
     return (
       <>
         <div className="section">
-          <h3 className="section-title">Motion &amp; Blend</h3>
+          {showHeading && <h3 className="section-title">Animation</h3>}
           <ControlSelect
             id="movement-mode"
             label="Movement"
@@ -682,6 +685,27 @@ const App = () => {
             disabled={!ready}
             tooltip="Slow every layer down or accelerate the motion-wide choreography."
           />
+        </div>
+
+        <div className="panel-footer">
+          <Button type="button" className="panel-footer-button" onClick={handleRandomiseAll} disabled={!ready}>
+            Randomise All
+          </Button>
+        </div>
+      </>
+    )
+  }
+
+  const renderFxControls = () => {
+    if (!spriteState) {
+      return null
+    }
+    const blendAutoLabelId = 'blend-auto-label'
+
+    return (
+      <>
+        <div className="section">
+          <h3 className="section-title">Blend &amp; Opacity</h3>
           <ControlSlider
             id="opacity-range"
             label="Layer Opacity"
@@ -766,13 +790,7 @@ const App = () => {
         </div>
 
         <div className="panel-footer">
-          <Button
-            {...BUTTON_PRIMARY}
-            type="button"
-            className="panel-footer-button"
-            onClick={handleRandomiseAll}
-            disabled={!ready}
-          >
+          <Button type="button" className="panel-footer-button" onClick={handleRandomiseAll} disabled={!ready}>
             Randomise All
           </Button>
         </div>
@@ -782,10 +800,16 @@ const App = () => {
 
   const renderUtilities = () => (
     <div className="utilities-actions">
-      <Button type="button" className="utilities-button" onClick={() => controllerRef.current?.reset()} disabled={!ready}>
+      <Button
+        type="button"
+        className="utilities-button"
+        variant="secondary"
+        onClick={() => controllerRef.current?.reset()}
+        disabled={!ready}
+      >
         Reset
       </Button>
-      <Button type="button" className="utilities-button" disabled>
+      <Button type="button" className="utilities-button" variant="outline" disabled>
         Save Preset
       </Button>
     </div>
@@ -793,7 +817,7 @@ const App = () => {
 
   const renderDisplayContent = () => (
     <>
-      <Card {...BUTTON_SECONDARY} className="panel canvas-card">
+      <Card className="panel canvas-card">
         <div className="canvas-wrapper">
           <div className="sketch-container" ref={sketchContainerRef} aria-live="polite" />
         </div>
@@ -806,7 +830,7 @@ const App = () => {
         </div>
       </Card>
 
-      <Card {...BUTTON_SECONDARY} className="panel">
+      <Card className="panel">
         <h2 className="control-label">Session Notes</h2>
         <p className="notes-text">
           Sculpt vivid voxel compositions inside BitLab. Iterate on iconography, mutate colour systems, elevate motion envelopes,
@@ -855,14 +879,31 @@ const App = () => {
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <Select value={themeShape} onValueChange={handleShapeSelect}>
+              <SelectTrigger className="header-theme-trigger" aria-label="Theme shape">
+                <SelectValue placeholder="Shape">{themeShapeLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="header-theme-menu">
+                <SelectGroup>
+                  <SelectItem value="box" className="header-theme-item">
+                    Box
+                  </SelectItem>
+                  <SelectItem value="rounded" className="header-theme-item">
+                    Rounded
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <Button
               type="button"
+              size="icon"
+              variant="outline"
               className="header-icon-button"
               onClick={cycleThemeMode}
               aria-label={`Switch theme mode (current ${themeModeText})`}
               title={`Theme: ${themeModeText}`}
             >
-              <span aria-hidden="true">{themeModeIcon}</span>
+              <ThemeModeIcon className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -871,59 +912,39 @@ const App = () => {
       <main className="app-main">
         <div className={`app-layout${isStudioLayout ? ' app-layout--studio' : ''}`}>
           <aside className="control-column">
-            {isStudioLayout ? (
-              <>
-                <Card {...BUTTON_SECONDARY} className="control-card">
-                  <div className="panel">
-                    <div className="panel-heading">Sprite Controls</div>
+            <div className="panel">
+              <Tabs selectedIndex={controlTabIndex} onChange={setControlTabIndex}>
+                <TabsTriggerList className="retro-tabs">
+                  <TabsTrigger>Sprites</TabsTrigger>
+                  <TabsTrigger>FX</TabsTrigger>
+                  {!isStudioLayout && <TabsTrigger>Motion</TabsTrigger>}
+                </TabsTriggerList>
+                <TabsPanels>
+                  <TabsContent>
                     {renderSpriteControls()}
-                  </div>
-                </Card>
-                <Card {...BUTTON_SECONDARY} className="utility-card">
-                  <div className="panel">
-                    <div className="panel-heading">Utilities</div>
-                    {renderUtilities()}
-                  </div>
-                </Card>
-              </>
-            ) : (
-              <>
-                <Card {...BUTTON_SECONDARY} className="control-card">
-                  <div className="panel">
-                    <Tabs value={controlTab} onValueChange={(next) => setControlTab(next as 'sprites' | 'fx')}>
-                      <TabsTriggerList className="retro-tabs">
-                        <TabsTrigger value="sprites">Sprites</TabsTrigger>
-                        <TabsTrigger value="fx">FX</TabsTrigger>
-                      </TabsTriggerList>
-                      <TabsPanels>
-                        <TabsContent value="sprites" className="tab-panel">
-                          {renderSpriteControls()}
-                        </TabsContent>
-                        <TabsContent value="fx" className="tab-panel">
-                          {renderFxControls()}
-                        </TabsContent>
-                      </TabsPanels>
-                    </Tabs>
-                  </div>
-                  <div className="panel">
-                    <div className="panel-heading">Utilities</div>
-                    {renderUtilities()}
-                  </div>
-                </Card>
-              </>
-            )}
+                  </TabsContent>
+                  <TabsContent>
+                    {renderFxControls()}
+                  </TabsContent>
+                  {!isStudioLayout && (
+                    <TabsContent>
+                      {renderMotionControls(false)}
+                    </TabsContent>
+                  )}
+                </TabsPanels>
+              </Tabs>
+            </div>
+            <div className="panel">
+              <div className="panel-heading">Utilities</div>
+              {renderUtilities()}
+            </div>
           </aside>
 
           <div className="display-column">{renderDisplayContent()}</div>
 
           {isStudioLayout && (
-            <aside className="fx-column">
-              <Card {...BUTTON_SECONDARY} className="fx-card">
-                <div className="panel">
-                  <div className="panel-heading">FX</div>
-                  {renderFxControls()}
-                </div>
-              </Card>
+            <aside className="motion-column">
+              <div className="panel">{renderMotionControls(true)}</div>
             </aside>
           )}
         </div>

@@ -387,10 +387,11 @@ const computeMovementOffsets = (
     case 'comet': {
       const pathLength = layerTileSize * (1.2 + layerIndex * 0.35 + motionScale * 1.6)
       const travel = phased * (0.035 + layerIndex * 0.01)
-      const tail = Math.max(0.15, 1 - ((travel + phase * 0.4) % (Math.PI * 2)))
-      const offsetX = Math.cos(travel + phase) * pathLength
-      const offsetY = Math.sin(travel * 0.6 + phase * 0.5) * pathLength * 0.45
-      const scaleMultiplier = clampScale(0.7 + tail * motionScale)
+      const orbital = travel + phase
+      const tail = (Math.sin(travel * 0.9 + phase * 0.6) + 1) * 0.5
+      const offsetX = Math.cos(orbital) * pathLength
+      const offsetY = Math.sin(orbital * 0.75) * pathLength * 0.48
+      const scaleMultiplier = clampScale(0.65 + tail * motionScale * 0.55)
       return { offsetX, offsetY, scaleMultiplier }
     }
     case 'wavefront': {

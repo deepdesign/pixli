@@ -7,6 +7,24 @@
 BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, and RetroUI. Mix pixel iconography, palette theory, and motion envelopes to compose shimmering sprite tapestries in real time.
 
 <p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=20232A" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/TypeScript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/p5.js-1.9-DD4444?style=for-the-badge&logo=processingfoundation&logoColor=white" alt="p5.js" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/RetroUI-Custom-ffce02?style=for-the-badge&logo=figma&logoColor=111" alt="RetroUI" />
+</p>
+
+<p align="center">
+  <a href="https://bitlab.jamescutts.me/">
+    <img
+      src="https://img.shields.io/badge/Live%20Demo-bitlab.jamescutts.me-ff4f8b?style=for-the-badge&logo=debian&logoColor=white"
+      alt="Live Demo"
+    />
+  </a>
+</p>
+
+<p align="center">
   <img src="public/screengrabs/Screenshot%202025-11-10%20105941.png" width="48%" alt="BitLab Canvas view" />
   <img src="public/screengrabs/Screenshot%202025-11-10%20105947.png" width="48%" alt="BitLab Control panels" />
 </p>
@@ -28,24 +46,6 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 - [🗂 Project Structure](#-project-structure)
 - [🤝 Contributing](#-contributing)
 - [📜 License](#-license)
-
-<p align="center">
-  <a href="https://bitlab.jamescutts.me/">
-    <img
-      src="https://img.shields.io/badge/Live%20Demo-bitlab.jamescutts.me-ff4f8b?style=for-the-badge&logo=debian&logoColor=white"
-      alt="Live Demo"
-    />
-  </a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=20232A" alt="React" />
-  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
-  <img src="https://img.shields.io/badge/TypeScript-5.4-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/p5.js-1.9-DD4444?style=for-the-badge&logo=processingfoundation&logoColor=white" alt="p5.js" />
-  <img src="https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/RetroUI-Custom-ffce02?style=for-the-badge&logo=figma&logoColor=111" alt="RetroUI" />
-</p>
 
 ---
 

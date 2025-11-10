@@ -805,6 +805,7 @@ const App = () => {
             <Button
               type="button"
               size="icon"
+              variant="icon"
               className="header-icon-button"
               onClick={cycleThemeMode}
               aria-label={`Switch theme mode (current ${themeModeText})`}

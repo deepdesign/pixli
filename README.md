@@ -18,6 +18,7 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 ---
 
 ### 📚 Table of Contents
+
 - [✨ Highlights](#-highlights)
 - [🗺 Experience Map](#-experience-map)
 - [🚀 Quick Start](#-quick-start)
@@ -32,37 +33,40 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 
 ## ✨ Highlights
 
-- **Generative Sprite Canvas** – Multi-layer p5.js engine with dialed-in controls for density, scale spread, palette variance, opacity, and animation tempo.
-- **Expanded Sprite Modes** – Tiles, circles, hexagons, rings, diamonds, neon trails, comet bursts, and a curated pixel icon mode (with instant preview).
-- **Cluster & Motion Lab** – Fine-grained sliders for cluster intensity and movement, plus ten motion envelopes (sway → wavefront) and a master speed dial.
+- **Generative Sprite Canvas** – Multi-layer p5.js engine with dialed-in controls for density (50 → 1,000% under the hood), scale spread, palette variance, opacity, and animation tempo.
+- **Expanded Sprite Modes** – Tiles, circles, hexagons, rings, diamonds, neon trails, comet bursts, a long-form scanline, and a curated Bit Bonanza sprite library.
+- **Motion Lab** – Density-driven layering paired with ten motion envelopes (sway → wavefront) and a master speed dial.
+- **Rotation System** – Independent rotation offsets (Sprites tab) and spin animation (Motion tab) with per-sprite direction, speed and angle variance.
 - **Blend Architectures** – Layer-specific blend modes (multiply, screen, hard light, overlay) with optional per-sprite randomisation.
 - **Theme Designer** – System/light/dark cycling, six colourway accents, and RetroUI Box/Rounded chassis toggle applied across the entire shell.
 - **Status Chips** – Live palette, sprite mode, blend, motion, and FPS read-outs for reproducibility.
 - **Tailwind Retro Components** – Buttons, Selects, Switches, Tabs, and Cards rebuilt on the Tailwind spacing scale while honouring RetroUI tokens.
-- **Footer Resources** – One-click shortcuts to pixelarticons, p5.js, RetroUI docs, project inspirations, and the designer’s home at `jamescutts.me`.
+- **Footer Resources** – Slim footer featuring the BitLab logotype, quick access to RetroUI docs, p5.js, and `jamescutts.me`.
 
 ---
 
 ## 🗺 Experience Map
 
-| Area | Highlights |
-| ---- | ---------- |
-| **Header** | Accent selector, Box/Rounded toggle, and a cycling System → Light → Dark icon button. |
-| **Control Deck** | Tabs for Sprites / FX / Motion (Motion gets a dedicated column at ≥ 1760px). Sliders cover cluster density, tile count, scale spread, blend, palette variance, motion intensity, and animation speed. |
-| **Icon Mode** | A contextual panel appears with preview tile + label, keeping the dropdown and icon asset list within easy reach. |
-| **Utilities** | Reset (link variant) alongside a full-width “Save Preset” button, plus Randomise All in each tab footer. |
-| **Canvas** | BitLab renders layer stacks with subtle depth, then reports palette, mode, blend, motion, and FPS in pixel-perfect status chips. |
-| **Footer** | Useful references – pixelarticons, p5.js, RetroUI docs, Series Advent & Pastiche inspiration credits, and `jamescutts.me`. |
+| Area             | Highlights                                                                                                                                                                                                                              |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**       | Accent selector, Box/Rounded toggle, and a cycling System → Light → Dark icon button.                                                                                                                                                   |
+| **Control Deck** | Tabs for Sprites / Layers / Motion (Motion gets a dedicated column at ≥ 1760px). Sliders cover tile density (0–100 UI), scale spread, rotation offsets, blend, palette variance, motion intensity, rotation speed, and animation speed. |
+| **Icon Mode**    | A contextual panel appears with preview tile + label, keeping the dropdown and icon asset list within easy reach.                                                                                                                       |
+| **Utilities**    | Reset (link variant) alongside a full-width “Save Preset” button, plus Randomise All in each tab footer.                                                                                                                                |
+| **Canvas**       | BitLab renders layer stacks with subtle depth, then reports palette, mode, blend, motion, and FPS in pixel-perfect status chips.                                                                                                        |
+| **Footer**       | BitLab wordmark plus links to p5.js, RetroUI docs, and `jamescutts.me`.                                                                                                                                                                 |
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js **18.18+** (Node 20 LTS recommended)
 - npm **9+**
 
 ### Installation
+
 ```bash
 # clone the repository
 git clone https://github.com/deepdesign/bitlab.git
@@ -74,31 +78,34 @@ npm install
 # start the development server
 npm run dev
 ```
+
 Open `http://localhost:5173` and start sculpting sprites.
 
 ### Production Build
+
 ```bash
 npm run build
 # optional: preview production output
 npm run preview
 ```
+
 The build artifacts land in `/dist` ready for static hosting.
 
 ---
 
 ## 🛠 Commands
 
-| Command | Description |
-| ------- | ----------- |
-| `npm run dev` | Launch Vite dev server with lightning-fast HMR. |
-| `npm run build` | Type-checks with `tsc` and emits optimised production bundles. |
-| `npm run preview` | Serves the production build locally. |
+| Command           | Description                                                    |
+| ----------------- | -------------------------------------------------------------- |
+| `npm run dev`     | Launch Vite dev server with lightning-fast HMR.                |
+| `npm run build`   | Type-checks with `tsc` and emits optimised production bundles. |
+| `npm run preview` | Serves the production build locally.                           |
 
 ---
 
 ## 🎨 Sprite Packs
 
-Drop additional SVG assets into `public/sprites/Bit-Bonanza-10x10-v-5.0/` (or create a sibling folder under `public/sprites/`). Vite serves these automatically at `/sprites/<pack-name>/<filename>.svg`, making it easy to wire new sprite packs into the selector.
+Drop additional SVG assets into `public/sprites/` (e.g. `public/sprites/Bit-Bonanza-10x10-v-5.0/`). Vite serves these automatically at `/sprites/<folder>/<filename>.svg`, so pointing the sprite selector at new packs is as simple as adding metadata.
 
 ---
 
@@ -109,11 +116,12 @@ Drop additional SVG assets into `public/sprites/Bit-Bonanza-10x10-v-5.0/` (or cr
 - [TypeScript](https://www.typescriptlang.org/) for confident refactors
 - [p5.js](https://p5js.org/) driving the generative engine
 - [Tailwind CSS](https://tailwindcss.com/) + [RetroUI](https://www.retroui.dev/) supplying the retro design system
-- [pixelarticons](https://github.com/halfmage/pixelarticons) as the icon catalogue
+- Bit Bonanza SVG packs for the bundled icon sprite library
 
 ---
 
 ## 🗂 Project Structure
+
 ```
 ├── public/
 │   ├── bitlab-logo-black.svg
@@ -134,6 +142,7 @@ Drop additional SVG assets into `public/sprites/Bit-Bonanza-10x10-v-5.0/` (or cr
 ---
 
 ## 🤝 Contributing
+
 1. Fork the repository and create a feature branch (`git checkout -b feature/your-idea`).
 2. Run `npm run dev` and ensure changes pass `npm run build` before committing.
 3. Submit a pull request describing the tweak, referencing any issues.
@@ -143,4 +152,5 @@ Bug reports and enhancement ideas are always welcome via [GitHub issues](https:/
 ---
 
 ## 📜 License
+
 All rights reserved. Please contact the maintainers at [deepdesign](https://github.com/deepdesign) for licensing discussions.

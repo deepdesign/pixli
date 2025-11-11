@@ -30,7 +30,7 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 </p>
 
 <p align="center">
-  <em>Dial in palettes, sprite density, motion envelopes, blend modes, and more from a single retro-inspired cockpit.</em>
+  <em>Dial in palettes, density, motion envelopes, blend modes, and more from a single retro-inspired cockpit.</em>
 </p>
 
 ---
@@ -41,7 +41,6 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 - [🗺 Experience Map](#-experience-map)
 - [🚀 Quick Start](#-quick-start)
 - [🛠 Commands](#-commands)
-- [🎨 Sprite Packs](#-sprite-packs)
 - [⚙️ Tech Stack](#️-tech-stack)
 - [🗂 Project Structure](#-project-structure)
 - [🤝 Contributing](#-contributing)
@@ -51,13 +50,13 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 
 ## ✨ Highlights
 
-- **Generative Sprite Canvas** – Multi-layer p5.js engine with dialed-in controls for density (50 → 1,000% under the hood), scale spread, palette variance, opacity, and animation tempo.
-- **Expanded Sprite Modes** – Tiles, circles, hexagons, rings, diamonds, neon trails, comet bursts, and a long-form scanline.
-- **Motion Lab** – Density-driven layering paired with ten motion envelopes (sway → wavefront) and a master speed dial.
+- **Generative Sprite Canvas** – Multi-layer p5.js engine with dialed-in controls for density (UI 0–100 ≙ 50–1000%), scale base/spread, palette variance, opacity, and animation tempo.
+- **Expanded Sprite Modes** – Tiles, circles, hexagons, rings, diamonds, stars, long neon scanlines, and more—each selectable via icon buttons for instant previews.
+- **Motion Lab** – Density-driven layering paired with ten motion envelopes (sway → wavefront) and a master speed dial, now normalised so every mode feels punchy at the same slider value.
 - **Rotation System** – Independent rotation offsets (Sprites tab) and spin animation (Motion tab) with per-sprite direction, speed and angle variance.
 - **Blend Architectures** – Layer-specific blend modes (multiply, screen, hard light, overlay) with optional per-sprite randomisation.
 - **Theme Designer** – System/light/dark cycling, six colourway accents, and RetroUI Box/Rounded chassis toggle applied across the entire shell.
-- **Status Chips** – Live palette, sprite mode, blend, motion, and FPS read-outs for reproducibility.
+- **Status HUD** – Live palette, sprite mode, blend, motion, density, and FPS read-outs follow you into fullscreen.
 - **Tailwind Retro Components** – Buttons, Selects, Switches, Tabs, and Cards rebuilt on the Tailwind spacing scale while honouring RetroUI tokens.
 - **Footer Resources** – Slim footer featuring the BitLab logotype, quick access to RetroUI docs, p5.js, and `jamescutts.me`.
 
@@ -68,11 +67,11 @@ BitLab is a vibrant generative art workbench built with React, p5.js, Tailwind, 
 | Area             | Highlights                                                                                                                                                                                                                              |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Header**       | Accent selector, Box/Rounded toggle, and a cycling System → Light → Dark icon button.                                                                                                                                                   |
-| **Control Deck** | Tabs for Sprites / Layers / Motion (Motion gets a dedicated column at ≥ 1760px). Sliders cover tile density (0–100 UI), scale spread, rotation offsets, blend, palette variance, motion intensity, rotation speed, and animation speed. |
-| **Icon Mode**    | A contextual panel appears with preview tile + label, keeping the dropdown and icon asset list within easy reach.                                                                                                                       |
-| **Utilities**    | Reset (link variant) alongside a full-width “Save Preset” button, plus Randomise All in each tab footer.                                                                                                                                |
-| **Canvas**       | BitLab renders layer stacks with subtle depth, then reports palette, mode, blend, motion, and FPS in pixel-perfect status chips.                                                                                                        |
-| **Footer**       | BitLab wordmark plus links to p5.js, RetroUI docs, and `jamescutts.me`.                                                                                                                                                                 |
+| **Control Deck** | Tabs for Sprites / Layers / Motion (Motion gains its own column ≥1760px). Sliders cover tile density, scale base/spread, rotation offsets, blend, palette variance, motion intensity, rotation speed, and animation speed. |
+| **Sprite Selector** | Icon-buttons for each geometric mode line up beneath the “Generation” heading so you can audition shapes instantly. |
+| **Status Bar / HUD** | Palette, sprite mode, blend, motion, density, and FPS badges anchor to the canvas edge alongside Randomise + Fullscreen. In fullscreen they float as an auto-hiding HUD. |
+| **Canvas**       | BitLab renders layered motion paths with depth-aware scaling, leaving the status HUD and fullscreen controls within reach. |
+| **Footer**       | BitLab wordmark plus links to p5.js, RetroUI docs, and `jamescutts.me`. |
 
 ---
 
@@ -121,12 +120,6 @@ The build artifacts land in `/dist` ready for static hosting.
 
 ---
 
-## 🎨 Sprite Packs
-
-Drop additional SVG assets into `public/sprites/`. Vite serves these automatically at `/sprites/<folder>/<filename>.svg`, so pointing the sprite selector at new packs is as simple as adding metadata.
-
----
-
 ## ⚙️ Tech Stack
 
 - [React 19](https://react.dev/) for a modern component model
@@ -134,23 +127,18 @@ Drop additional SVG assets into `public/sprites/`. Vite serves these automatical
 - [TypeScript](https://www.typescriptlang.org/) for confident refactors
 - [p5.js](https://p5js.org/) driving the generative engine
 - [Tailwind CSS](https://tailwindcss.com/) + [RetroUI](https://www.retroui.dev/) supplying the retro design system
-- Custom SVG packs for the bundled icon sprite library
-
----
 
 ## 🗂 Project Structure
 
 ```
 ├── public/
 │   ├── bitlab-logo-black.svg
-│   ├── bitlab-logo-white.svg
-│   └── sprites/
-│       └── sprites-pack/              # Drop-in slot for additional SVG sprite packs
+│   └── bitlab-logo-white.svg
 ├── src/
 │   ├── App.tsx           # Main UI & state wiring
 │   ├── generator.ts      # p5.js sprite logic & controller API
 │   ├── components/       # Tailwind-first Retro components (Button, Select, Switch, Tabs, Card)
-│   ├── data/             # palettes & icon metadata
+│   ├── data/             # palettes & supporting data
 │   └── index.css         # Tailwind import + RetroUI overrides
 ├── index.html            # Entry HTML + favicon
 ├── package.json

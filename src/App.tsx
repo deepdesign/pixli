@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
@@ -37,11 +38,9 @@ import {
   type MovementMode,
   type BackgroundMode,
 } from "./generator";
-import {
-  getPixelArtIconById,
-  pixelArtIconAssets,
-} from "./data/pixelartIconAssets";
-import { Moon, Monitor, Sun } from "lucide-react";
+import { PresetManager } from "./components/PresetManager";
+import { Badge } from "./components/retroui/Badge";
+import { Moon, Monitor, Sun, Maximize2, X, RefreshCw, Bookmark, Download } from "lucide-react";
 import { palettes } from "./data/palettes";
 const BLEND_MODES: BlendModeOption[] = [
   "NONE",
@@ -133,11 +132,6 @@ const SPRITE_MODES: Array<{
     label: "Line",
     description: "Neon scanlines with motion-friendly poses",
   },
-  {
-    value: "icon",
-    label: "Icon",
-    description: "Pixel icons sourced from the Bit Bonanza pack",
-  },
 ];
 
 const TILE_DENSITY_MIN = 50;
@@ -159,6 +153,36 @@ const uiToDensity = (value: number) => {
   return Math.round(
     TILE_DENSITY_MIN + (bounded / 100) * (TILE_DENSITY_MAX - TILE_DENSITY_MIN),
   );
+};
+
+const PALETTE_VARIANCE_MIN = 0;
+const PALETTE_VARIANCE_MAX = 150; // Increased from 100 to allow more variance
+
+const varianceToUi = (value: number) => {
+  const bounded = clampValue(value, PALETTE_VARIANCE_MIN, PALETTE_VARIANCE_MAX);
+  return Math.round(
+    ((bounded - PALETTE_VARIANCE_MIN) / (PALETTE_VARIANCE_MAX - PALETTE_VARIANCE_MIN)) *
+      100,
+  );
+};
+
+const uiToVariance = (value: number) => {
+  const bounded = clampValue(value, 0, 100);
+  return Math.round(
+    PALETTE_VARIANCE_MIN + (bounded / 100) * (PALETTE_VARIANCE_MAX - PALETTE_VARIANCE_MIN),
+  );
+};
+
+const MOTION_SPEED_MAX = 12.5;
+
+const speedToUi = (value: number) => {
+  const bounded = clampValue(value, 0, MOTION_SPEED_MAX);
+  return Math.round((bounded / MOTION_SPEED_MAX) * 100);
+};
+
+const uiToSpeed = (value: number) => {
+  const bounded = clampValue(value, 0, 100);
+  return Math.round((bounded / 100) * MOTION_SPEED_MAX);
 };
 
 const PALETTE_OPTIONS = palettes.map((palette) => ({
@@ -317,6 +341,8 @@ const ControlSelect = ({
   placeholder,
   tooltip,
   currentLabel,
+  onItemSelect,
+  onItemPointerDown,
 }: {
   id: string;
   label: string;
@@ -327,6 +353,8 @@ const ControlSelect = ({
   placeholder?: string;
   tooltip?: string;
   currentLabel?: string;
+  onItemSelect?: (value: string) => void;
+  onItemPointerDown?: (value: string) => void;
 }) => {
   const tooltipId = tooltip ? `${id}-tip` : undefined;
   const resolvedLabel =
@@ -363,7 +391,23 @@ const ControlSelect = ({
         <SelectContent>
           <SelectGroup>
             {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                onSelect={
+                  onItemSelect ? () => onItemSelect(option.value) : undefined
+                }
+                onPointerDown={
+                  onItemPointerDown
+                    ? (event) => {
+                        if (event.pointerType === "mouse" && event.button !== 0) {
+                          return;
+                        }
+                        onItemPointerDown(option.value);
+                      }
+                    : undefined
+                }
+              >
                 {option.label}
               </SelectItem>
             ))}
@@ -373,6 +417,101 @@ const ControlSelect = ({
     </div>
   );
 };
+
+// Component to render vector shape icons
+const ShapeIcon = ({ shape, size = 24 }: { shape: SpriteMode; size?: number }) => {
+  const viewBox = "0 0 24 24";
+  const center = 12;
+  const radius = 8;
+  
+  const renderShape = () => {
+    switch (shape) {
+      case "circle":
+        return <circle cx={center} cy={center} r={radius * 1.2} fill="currentColor" />;
+      
+      case "square":
+        return <rect x={4} y={4} width={16} height={16} fill="currentColor" />;
+      
+      case "rounded":
+        return <rect x={4} y={4} width={16} height={16} rx={3} ry={3} fill="currentColor" />;
+      
+      case "triangle":
+        return (
+          <polygon
+        points={`${center},3 21,21 3,21`}
+            fill="currentColor"
+          />
+        );
+      
+      case "hexagon": {
+        const hexRadius = radius * 1.2; // Make hexagon bigger
+        const points = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 6;
+          const x = center + hexRadius * Math.cos(angle);
+          const y = center + hexRadius * Math.sin(angle);
+          points.push(`${x},${y}`);
+        }
+        return <polygon points={points.join(" ")} fill="currentColor" />;
+      }
+      
+      case "ring":
+        return (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+          />
+        );
+      
+      case "diamond": {
+        const diamondSize = 9; // Make diamond bigger
+        return (
+          <polygon
+            points={`${center},${center - diamondSize} ${center + diamondSize},${center} ${center},${center + diamondSize} ${center - diamondSize},${center}`}
+            fill="currentColor"
+          />
+        );
+      }
+      
+      case "star": {
+        const outerRadius = radius * 1.45; // Make star bigger
+        const innerRadius = radius * 0.6; // Adjust inner radius proportionally
+        const points = [];
+        for (let i = 0; i < 10; i++) {
+          const angle = (Math.PI / 5) * i - Math.PI / 2;
+          const r = i % 2 === 0 ? outerRadius : innerRadius;
+          const x = center + r * Math.cos(angle);
+          const y = center + r * Math.sin(angle);
+          points.push(`${x},${y}`);
+        }
+        return <polygon points={points.join(" ")} fill="currentColor" />;
+      }
+      
+      case "line":
+        return <rect x={2} y={10} width={20} height={4} rx={2} fill="currentColor" />;
+      
+      default:
+        return <circle cx={center} cy={center} r={radius} fill="currentColor" />;
+    }
+  };
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={viewBox}
+      style={{ display: "block" }}
+      fill="currentColor"
+    >
+      {renderShape()}
+    </svg>
+  );
+};
+
 
 const BitlabLogo = ({ className = "" }: { className?: string }) => (
   <svg
@@ -435,7 +574,13 @@ const App = () => {
     getStoredThemeShape(),
   );
   const [controlTabIndex, setControlTabIndex] = useState(0);
+  const [showPresetManager, setShowPresetManager] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hudVisible, setHudVisible] = useState(true);
+  const hudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const isStudioLayout = useMediaQuery("(min-width: 1760px)");
+  const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const cycleThemeMode = useCallback(() => {
     setThemeMode((prev) => {
@@ -491,14 +636,6 @@ const App = () => {
     }
   }, [controlTabIndex, isStudioLayout]);
 
-  const currentIconAsset = useMemo(() => {
-    if (!spriteState || spriteState.spriteMode !== "icon") {
-      return null;
-    }
-    return (
-      getPixelArtIconById(spriteState.iconAssetId) ?? pixelArtIconAssets[0]
-    );
-  }, [spriteState?.iconAssetId, spriteState?.spriteMode]);
 
   useEffect(() => {
     const container = sketchContainerRef.current;
@@ -524,7 +661,22 @@ const App = () => {
   }, []);
 
   const handlePaletteSelection = useCallback((paletteId: string) => {
-    controllerRef.current?.usePalette(paletteId);
+    if (!controllerRef.current) {
+      return;
+    }
+    controllerRef.current.setHueShift(0);
+    controllerRef.current.usePalette(paletteId);
+  }, []);
+
+  const handlePaletteOptionSelect = useCallback((paletteId: string) => {
+    const controller = controllerRef.current;
+    if (!controller) {
+      return;
+    }
+    controller.setHueShift(0);
+    if (controller.getState().paletteId === paletteId) {
+      controller.usePalette(paletteId);
+    }
   }, []);
 
   const handleBackgroundSelect = useCallback((mode: string) => {
@@ -559,9 +711,6 @@ const App = () => {
     controllerRef.current?.setRotationSpeed(value);
   }, []);
 
-  const handleIconAssetSelect = useCallback((iconId: string) => {
-    controllerRef.current?.setIconAsset(iconId);
-  }, []);
 
   const handleThemeSelect = useCallback((value: string) => {
     if (
@@ -584,6 +733,205 @@ const App = () => {
     controllerRef.current?.randomizeAll();
   }, []);
 
+  const handleScreenshot = useCallback(() => {
+    const canvas = sketchContainerRef.current?.querySelector("canvas");
+    if (!canvas) {
+      return;
+    }
+
+    try {
+      // Get canvas as data URL
+      const dataURL = (canvas as HTMLCanvasElement).toDataURL("image/png");
+      
+      // Create download link
+      const link = document.createElement("a");
+      link.download = `bitlab-${new Date().toISOString().split("T")[0]}-${Date.now()}.png`;
+      link.href = dataURL;
+      link.click();
+    } catch (error) {
+      console.error("Failed to capture screenshot:", error);
+    }
+  }, []);
+
+  const handleFullscreenToggle = useCallback(async () => {
+    // Use the Card element instead of canvasWrapper for fullscreen
+    const cardElement = document.querySelector('.canvas-card--fullscreen') || canvasWrapperRef.current?.closest('.canvas-card') || canvasWrapperRef.current;
+    if (!cardElement) {
+      return;
+    }
+
+    try {
+      if (!document.fullscreenElement) {
+        // Try standard API first, then vendor prefixes
+        const requestFullscreen =
+          (cardElement as any).requestFullscreen ||
+          (cardElement as any).webkitRequestFullscreen ||
+          (cardElement as any).mozRequestFullScreen ||
+          (cardElement as any).msRequestFullscreen;
+        
+        if (requestFullscreen) {
+          await requestFullscreen.call(cardElement);
+          setIsFullscreen(true);
+        }
+      } else {
+        // Try standard API first, then vendor prefixes
+        const exitFullscreen =
+          document.exitFullscreen ||
+          (document as any).webkitExitFullscreen ||
+          (document as any).mozCancelFullScreen ||
+          (document as any).msExitFullscreen;
+        
+        if (exitFullscreen) {
+          await exitFullscreen.call(document);
+          setIsFullscreen(false);
+        }
+      }
+    } catch (error) {
+      console.error("Fullscreen error:", error);
+    }
+  }, []);
+
+  const handleFullscreenClose = useCallback(async () => {
+    const fullscreenElement =
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement;
+    
+    if (fullscreenElement) {
+      try {
+        const exitFullscreen =
+          document.exitFullscreen ||
+          (document as any).webkitExitFullscreen ||
+          (document as any).mozCancelFullScreen ||
+          (document as any).msExitFullscreen;
+        
+        if (exitFullscreen) {
+          await exitFullscreen.call(document);
+          setIsFullscreen(false);
+        }
+      } catch (error) {
+        console.error("Exit fullscreen error:", error);
+      }
+    }
+  }, []);
+
+  // Show HUD on interaction in fullscreen mode
+  const showHUD = useCallback(() => {
+    if (!isFullscreen) return;
+    setHudVisible(true);
+    if (hudTimeoutRef.current) {
+      clearTimeout(hudTimeoutRef.current);
+    }
+    hudTimeoutRef.current = setTimeout(() => {
+      setHudVisible(false);
+    }, 3000);
+  }, [isFullscreen]);
+
+  const handleHUDMouseEnter = useCallback(() => {
+    if (!isFullscreen) return;
+    setHudVisible(true);
+    if (hudTimeoutRef.current) {
+      clearTimeout(hudTimeoutRef.current);
+    }
+  }, [isFullscreen]);
+
+  const handleHUDMouseLeave = useCallback(() => {
+    if (!isFullscreen) return;
+    hudTimeoutRef.current = setTimeout(() => {
+      setHudVisible(false);
+    }, 3000);
+  }, [isFullscreen]);
+
+  // Listen for fullscreen changes (ESC key, etc.) and manage HUD visibility
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const fullscreenElement =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+      const newIsFullscreen = !!fullscreenElement;
+      console.log('Fullscreen change detected:', { newIsFullscreen, fullscreenElement });
+      setIsFullscreen(newIsFullscreen);
+      
+      if (newIsFullscreen) {
+        // Show HUD immediately when entering fullscreen
+        setHudVisible(true);
+        if (hudTimeoutRef.current) {
+          clearTimeout(hudTimeoutRef.current);
+          hudTimeoutRef.current = null;
+        }
+        // Start auto-hide timer (disabled for debugging - set to 30 seconds)
+        hudTimeoutRef.current = setTimeout(() => {
+          setHudVisible(false);
+        }, 30000);
+      } else {
+        // Always show when not in fullscreen
+        setHudVisible(true);
+        if (hudTimeoutRef.current) {
+          clearTimeout(hudTimeoutRef.current);
+          hudTimeoutRef.current = null;
+        }
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+    };
+  }, []);
+
+  // Track mouse/touch movement in fullscreen
+  useEffect(() => {
+    // Show HUD on any interaction when in fullscreen
+    const handleInteraction = () => {
+      // Check fullscreen state directly
+      const fullscreenElement =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+      
+      if (!fullscreenElement) {
+        // Not in fullscreen, always show
+        setHudVisible(true);
+        return;
+      }
+
+      // In fullscreen, show HUD on interaction
+      setHudVisible(true);
+      if (hudTimeoutRef.current) {
+        clearTimeout(hudTimeoutRef.current);
+      }
+      hudTimeoutRef.current = setTimeout(() => {
+        setHudVisible(false);
+      }, 3000);
+    };
+
+    window.addEventListener("mousemove", handleInteraction, { passive: true });
+    window.addEventListener("touchstart", handleInteraction, { passive: true });
+    window.addEventListener("mousedown", handleInteraction, { passive: true });
+    window.addEventListener("keydown", handleInteraction, { passive: true });
+
+    return () => {
+      window.removeEventListener("mousemove", handleInteraction);
+      window.removeEventListener("touchstart", handleInteraction);
+      window.removeEventListener("mousedown", handleInteraction);
+      window.removeEventListener("keydown", handleInteraction);
+      if (hudTimeoutRef.current) {
+        clearTimeout(hudTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const statusPalette = currentPalette.name;
   const statusMode = currentModeLabel;
   const statusBlend = spriteState
@@ -597,9 +945,9 @@ const App = () => {
     (mode: ThemeMode, color: ThemeColor, shape: "box" | "rounded") => {
       if (typeof document === "undefined") {
         return;
-      }
+    }
       const root = document.documentElement;
-      const prefersDark =
+    const prefersDark =
         mode === "system" &&
         typeof window !== "undefined" &&
         typeof window.matchMedia === "function"
@@ -670,46 +1018,44 @@ const App = () => {
       <>
         <div className="section">
           <h3 className="section-title">Generation</h3>
-          <ControlSelect
-            id="render-mode"
-            label="Select Sprites"
-            value={spriteState.spriteMode}
-            onChange={(value) => handleModeChange(value as SpriteMode)}
-            disabled={!ready}
-            options={SPRITE_MODES.map((mode) => ({
-              value: mode.value,
-              label: mode.label,
-            }))}
-            tooltip="Swap between rounded tiles, geometric sprite layers, or a single icon motif."
-            currentLabel={currentModeLabel}
-          />
-          {spriteState.spriteMode === "icon" && (
-            <div className="icon-context">
-              {currentIconAsset && (
-                <div className="icon-context-preview">
-                  <img
-                    src={currentIconAsset.url}
-                    alt={currentIconAsset.label}
-                    width={28}
-                    height={28}
-                  />
-                </div>
+          {/* Label, status, and tooltip for sprite selection */}
+          <div className="control-field">
+            <div className="field-heading">
+              <div className="field-heading-left">
+                <span className="field-label" id="render-mode-label">
+                  Select Sprites
+                </span>
+                <TooltipIcon id="render-mode-tip" text="Choose the geometric shape used for sprites." label="Select Sprites" />
+              </div>
+              {currentModeLabel && (
+                <span className="field-value">{currentModeLabel}</span>
               )}
-              <ControlSelect
-                id="library-icon"
-                label="Library Icon"
-                value={spriteState.iconAssetId}
-                onChange={handleIconAssetSelect}
-                disabled={!ready}
-                options={pixelArtIconAssets.map((assetOption) => ({
-                  value: assetOption.id,
-                  label: assetOption.label,
-                }))}
-                placeholder="Select Icon"
-                tooltip="Choose an SVG sprite served from the local sprites library."
-              />
             </div>
-          )}
+          </div>
+
+          {/* Icon button row for sprite selection */}
+          <div className="sprite-icon-buttons" style={{ marginTop: '0.25rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {SPRITE_MODES.map((mode) => {
+                const isSelected = spriteState.spriteMode === mode.value;
+                return (
+                  <Button
+                    key={mode.value}
+                    type="button"
+                    size="icon"
+                    variant={isSelected ? "default" : "outline"}
+                    onClick={() => handleModeChange(mode.value)}
+                    disabled={!ready}
+                    title={mode.label}
+                    aria-label={mode.label}
+                    style={{ width: '44px', height: '44px', padding: '8px' }}
+                  >
+                    <ShapeIcon shape={mode.value} size={28} />
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
 
           <ControlSlider
             id="density-range"
@@ -765,7 +1111,7 @@ const App = () => {
                 id="rotation-toggle"
                 checked={spriteState.rotationEnabled}
                 onCheckedChange={handleRotationToggle}
-                disabled={!ready}
+            disabled={!ready}
                 aria-labelledby="rotation-toggle-label"
               />
             </div>
@@ -785,18 +1131,6 @@ const App = () => {
               />
             </div>
           )}
-        </div>
-
-        <div className="panel-footer">
-          <Button
-            type="button"
-            size="md"
-            className="flex-1"
-            onClick={handleRandomiseAll}
-            disabled={!ready}
-          >
-            Randomise All
-          </Button>
         </div>
       </>
     );
@@ -843,9 +1177,9 @@ const App = () => {
             label="Animation Speed"
             min={0}
             max={100}
-            value={Math.round(spriteState.motionSpeed)}
-            displayValue={`${Math.round(spriteState.motionSpeed)}%`}
-            onChange={(value) => controllerRef.current?.setMotionSpeed(value)}
+            value={speedToUi(spriteState.motionSpeed)}
+            displayValue={`${speedToUi(spriteState.motionSpeed)}%`}
+            onChange={(value) => controllerRef.current?.setMotionSpeed(uiToSpeed(value))}
             disabled={!ready}
             tooltip="Slow every layer down or accelerate the motion-wide choreography."
           />
@@ -876,31 +1210,19 @@ const App = () => {
           </div>
           {spriteState.rotationSpeed > 0 && (
             <div className="rotation-slider-wrapper">
-              <ControlSlider
+          <ControlSlider
                 id="rotation-speed"
                 label="Rotation Speed"
-                min={0}
-                max={100}
+            min={0}
+            max={100}
                 value={Math.round(spriteState.rotationSpeed)}
                 displayValue={`${Math.round(spriteState.rotationSpeed)}%`}
                 onChange={handleRotationSpeedChange}
                 disabled={!ready}
                 tooltip="Control how quickly sprites spin when rotation is enabled."
-              />
-            </div>
-          )}
+          />
         </div>
-
-        <div className="panel-footer">
-          <Button
-            type="button"
-            size="md"
-            className="flex-1"
-            onClick={handleRandomiseAll}
-            disabled={!ready}
-          >
-            Randomise All
-          </Button>
+          )}
         </div>
       </>
     );
@@ -915,6 +1237,65 @@ const App = () => {
     return (
       <>
         <div className="section">
+          <h3 className="section-title">Palette &amp; Variance</h3>
+          <ControlSelect
+            id="palette-presets"
+            label="Palette Presets"
+            value={currentPalette.id}
+            onChange={(value) => handlePaletteSelection(value)}
+            onItemSelect={handlePaletteOptionSelect}
+            onItemPointerDown={handlePaletteOptionSelect}
+            disabled={!ready}
+            options={PALETTE_OPTIONS}
+            tooltip="Select the core palette used for tinting sprites before variance is applied."
+            currentLabel={currentPalette.name}
+          />
+          <ControlSlider
+            id="palette-range"
+            label="Palette Variance"
+            min={0}
+            max={100}
+            value={varianceToUi(spriteState.paletteVariance)}
+            displayValue={`${varianceToUi(spriteState.paletteVariance)}%`}
+            onChange={(value) =>
+              controllerRef.current?.setPaletteVariance(uiToVariance(value))
+            }
+            disabled={!ready}
+            tooltip="Controls how much each colour can drift away from the base palette swatches."
+          />
+          <ControlSlider
+            id="hue-shift"
+            label="Hue Shift"
+            min={0}
+            max={100}
+            value={spriteState.hueShift ?? 0}
+            displayValue={`${spriteState.hueShift ?? 0}%`}
+            onChange={(value) =>
+              controllerRef.current?.setHueShift(value)
+            }
+            disabled={!ready}
+            tooltip="Shifts all palette colors around the color wheel (0-360°)."
+          />
+          <ControlSelect
+            id="background-mode"
+            label="Canvas Background"
+            value={spriteState.backgroundMode}
+            onChange={handleBackgroundSelect}
+            disabled={!ready}
+            options={BACKGROUND_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+            tooltip="Choose the colour applied behind the canvas."
+            currentLabel={
+              BACKGROUND_OPTIONS.find(
+                (option) => option.value === spriteState.backgroundMode,
+              )?.label
+            }
+          />
+        </div>
+
+        <div className="section" style={{ marginTop: '2rem' }}>
           <h3 className="section-title">Blend &amp; Opacity</h3>
           <ControlSlider
             id="opacity-range"
@@ -966,107 +1347,148 @@ const App = () => {
             </div>
           </div>
         </div>
-
-        <div className="section">
-          <h3 className="section-title">Palette &amp; Variance</h3>
-          <ControlSlider
-            id="palette-range"
-            label="Palette Variance"
-            min={0}
-            max={100}
-            value={Math.round(spriteState.paletteVariance)}
-            displayValue={`${Math.round(spriteState.paletteVariance)}%`}
-            onChange={(value) =>
-              controllerRef.current?.setPaletteVariance(value)
-            }
-            disabled={!ready}
-            tooltip="Controls how much each colour can drift away from the base palette swatches."
-          />
-          <ControlSelect
-            id="palette-presets"
-            label="Palette Presets"
-            value={currentPalette.id}
-            onChange={(value) => handlePaletteSelection(value)}
-            disabled={!ready}
-            options={PALETTE_OPTIONS}
-            tooltip="Select the core palette used for tinting sprites before variance is applied."
-            currentLabel={currentPalette.name}
-          />
-          <ControlSelect
-            id="background-mode"
-            label="Canvas Background"
-            value={spriteState.backgroundMode}
-            onChange={handleBackgroundSelect}
-            disabled={!ready}
-            options={BACKGROUND_OPTIONS.map((option) => ({
-              value: option.value,
-              label: option.label,
-            }))}
-            tooltip="Choose the colour applied behind the canvas."
-            currentLabel={
-              BACKGROUND_OPTIONS.find(
-                (option) => option.value === spriteState.backgroundMode,
-              )?.label
-            }
-          />
-        </div>
-
-        <div className="panel-footer">
-          <Button
-            type="button"
-            size="md"
-            className="flex-1"
-            onClick={handleRandomiseAll}
-            disabled={!ready}
-          >
-            Randomise All
-          </Button>
-        </div>
       </>
     );
   };
 
-  const renderUtilities = () => (
-    <div className="utilities-actions">
-      <Button
-        type="button"
-        size="md"
-        className="flex-none"
-        variant="link"
-        onClick={() => controllerRef.current?.reset()}
-        disabled={!ready}
-      >
-        Reset
-      </Button>
-      <Button
-        type="button"
-        size="md"
-        className="flex-1"
-        variant="secondary"
-        disabled
-      >
-        Save Preset
-      </Button>
-    </div>
+  const handleLoadPreset = useCallback(
+    (state: GeneratorState) => {
+      controllerRef.current?.applyState(state);
+    },
+    [],
   );
 
+
+  const renderStatusBar = () => {
+    const hudClassName = isFullscreen 
+      ? `status-bar status-bar--fullscreen-hud${!hudVisible ? ' status-bar--hidden' : ''}`
+      : 'status-bar';
+    
+    return (
+      <div
+        className={hudClassName}
+        onMouseEnter={handleHUDMouseEnter}
+        onMouseLeave={handleHUDMouseLeave}
+        data-fullscreen={isFullscreen}
+        data-hud-visible={hudVisible}
+        style={isFullscreen ? { 
+          position: 'relative',
+          pointerEvents: 'auto',
+          opacity: 1,
+          visibility: 'visible',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          padding: '12px',
+          minWidth: '300px',
+          maxWidth: '90vw',
+          width: 'auto',
+          backgroundColor: 'rgba(19, 20, 45, 0.95)',
+          border: '2px solid rgba(255, 212, 71, 0.5)',
+          borderRadius: '8px',
+          boxShadow: '6px 6px 0 rgba(26, 13, 44, 0.85)',
+          backdropFilter: 'blur(8px)',
+        } : undefined}
+      >
+      <div className="status-bar-left">
+        <Badge variant="surface" size="sm">
+          Palette · {statusPalette}
+        </Badge>
+        <Badge variant="surface" size="sm">
+          Mode · {statusMode}
+        </Badge>
+        <Badge variant="surface" size="sm">
+          Blend · {statusBlend}
+        </Badge>
+        <Badge variant="surface" size="sm">
+          Motion · {statusMotion}
+        </Badge>
+        <Badge variant="surface" size="sm">
+          {frameRate.toFixed(0)} FPS
+        </Badge>
+        </div>
+      <div className="status-bar-right">
+          <Button
+            type="button"
+          size="icon"
+            variant="outline"
+          onClick={() => setShowPresetManager(true)}
+            disabled={!ready}
+          className="status-bar-presets-button"
+          aria-label="Presets"
+          title="Presets"
+          >
+          <Bookmark className="status-bar-icon" />
+          </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={handleRandomiseAll}
+          disabled={!ready}
+          className="status-bar-randomise-button"
+          aria-label="Randomise all"
+          title="Randomise all"
+        >
+          <RefreshCw className="status-bar-icon" />
+          </Button>
+      <Button
+        type="button"
+          size="icon"
+          variant="outline"
+          onClick={isFullscreen ? handleFullscreenClose : handleFullscreenToggle}
+        disabled={!ready}
+          className="status-bar-fullscreen-button"
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? (
+            <X className="status-bar-icon" />
+          ) : (
+            <Maximize2 className="status-bar-icon" />
+          )}
+      </Button>
+    </div>
+    </div>
+    );
+  };
+
   const renderDisplayContent = () => (
-    <Card className="panel canvas-card">
-      <div className="canvas-wrapper">
+    <Card className={`panel canvas-card ${isFullscreen ? "canvas-card--fullscreen" : ""}`}>
+      <div className="canvas-wrapper" ref={canvasWrapperRef}>
         <div
           className="sketch-container"
           ref={sketchContainerRef}
           aria-live="polite"
         />
-      </div>
-      <div className="status-bar">
-        <span className="status-chip">Palette · {statusPalette}</span>
-        <span className="status-chip">Mode · {statusMode}</span>
-        <span className="status-chip">Blend · {statusBlend}</span>
-        <span className="status-chip">Motion · {statusMotion}</span>
-        <span className="status-chip">{frameRate.toFixed(0)} FPS</span>
-      </div>
-    </Card>
+        {/* Fullscreen HUD - MUST be inside canvas-wrapper (the actual fullscreen element) */}
+        {isFullscreen && (
+          <div 
+            id="fullscreen-hud"
+            style={{ 
+              position: 'fixed',
+              bottom: '24px',
+              left: '50%',
+              transform: hudVisible ? 'translateX(-50%)' : 'translateX(-50%) translateY(20px)',
+              pointerEvents: hudVisible ? 'auto' : 'none',
+              opacity: hudVisible ? 1 : 0,
+              visibility: hudVisible ? 'visible' : 'hidden',
+              display: 'flex',
+              zIndex: 2147483648,
+              transition: 'opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease',
+              width: '800px',
+              minWidth: '800px',
+              gap: '16px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {renderStatusBar()}
+        </div>
+        )}
+        </div>
+      {!isFullscreen && renderStatusBar()}
+      </Card>
   );
 
   return (
@@ -1131,6 +1553,7 @@ const App = () => {
             <Button
               type="button"
               size="icon"
+              variant="outline"
               className="header-icon-button"
               onClick={cycleThemeMode}
               aria-label={`Switch theme mode (current ${themeModeText})`}
@@ -1166,13 +1589,11 @@ const App = () => {
                 </TabsPanels>
               </Tabs>
             </Card>
-            <Card className="panel">
-              <div className="panel-heading">Utilities</div>
-              {renderUtilities()}
-            </Card>
           </aside>
 
-          <div className="display-column">{renderDisplayContent()}</div>
+          <div className="display-column">
+            {renderDisplayContent()}
+          </div>
 
           {isStudioLayout && (
             <aside className="motion-column">
@@ -1181,11 +1602,10 @@ const App = () => {
           )}
         </div>
       </main>
-
       <footer className="app-footer">
         <div className="footer-brand">
           <BitlabLogo className="footer-logo" />
-          <span>
+        <span>
             © {new Date().getFullYear()} BitLab · Generative Playground ·{" "}
             <a href="https://jamescutts.me/" target="_blank" rel="noreferrer">
               jamescutts.me
@@ -1206,6 +1626,15 @@ const App = () => {
           </a>
         </span>
       </footer>
+
+      {showPresetManager && (
+        <PresetManager
+          currentState={spriteState}
+          onLoadPreset={handleLoadPreset}
+          onClose={() => setShowPresetManager(false)}
+        />
+      )}
+
     </div>
   );
 };

@@ -11,7 +11,7 @@ interface CardBaseProps extends HTMLAttributes<HTMLDivElement> {
 const CardRoot = ({ className, ...props }: CardBaseProps) => (
   <div
     className={cn(
-      "inline-block border-2 border-border rounded-[var(--radius-md)] shadow-md transition-all hover:shadow-none bg-card text-card-foreground",
+      "inline-block border-2 border-border rounded-[var(--radius-md)] shadow-md bg-card text-card-foreground",
       className,
     )}
     {...props}

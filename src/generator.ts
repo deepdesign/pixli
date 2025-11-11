@@ -1,8 +1,5 @@
 import p5 from "p5";
 
-import type { PixelIcon } from "./data/icons";
-import { getRandomIcon, pixelIcons } from "./data/icons";
-import { pixelArtIconAssets, pixelArtIconIds } from "./data/pixelartIconAssets";
 import {
   defaultPaletteId,
   getPalette,
@@ -11,9 +8,8 @@ import {
 } from "./data/palettes";
 
 const MIN_TILE_SCALE = 0.12;
-const MAX_TILE_SCALE = 6.5;
+const MAX_TILE_SCALE = 5.5; // Allow large sprites, but positioning will be adjusted
 const MAX_ROTATION_DEGREES = 180;
-const MIN_DENSITY_PERCENT = 50;
 const MAX_DENSITY_PERCENT_UI = 1000;
 const ROTATION_SPEED_MAX = (Math.PI / 2) * 0.05; // approx 4.5°/s at 100%
 
@@ -35,6 +31,38 @@ const movementModes = [
 ] as const;
 
 export type MovementMode = (typeof movementModes)[number];
+
+// Speed multipliers to normalize perceived animation speed across movement modes
+// Based on analysis: drift uses 0.02 multiplier (slowest), sway uses 0.13 (fastest)
+// These multipliers ensure all modes feel balanced at 100% animation speed
+const MOVEMENT_SPEED_MULTIPLIERS: Record<MovementMode, number> = {
+  sway: 2.0,        // ~2x slower - halved speed from 1.0x (was reference)
+  drift: 1.625,    // ~1.625x slower - quadrupled speed from 6.5x
+  cascade: 2.9,     // ~2.9x slower (0.045 vs 0.13)
+  comet: 3.0,       // ~3x slower - reduced speed by 25% from 2.4x
+  ripple: 3.25,     // ~3.25x slower (avg 0.04 vs 0.13)
+  spiral: 4.4,      // ~4.4x slower - halved speed from 2.2x
+  orbit: 1.1,       // ~1.1x slower - doubled speed from 2.2x
+  zigzag: 2.2,      // ~2.2x slower (0.06 vs 0.13)
+  pulse: 1.6,       // ~1.6x slower (avg 0.08 vs 0.13)
+  wavefront: 10.0,  // ~10x slower - wavefront uses phased * 0.055 internally, needs significant slowdown
+};
+
+// Scale multipliers to improve canvas coverage for modes with large movement radii
+// Modes like spiral/orbit move sprites in wide circles, causing sparsity
+// Increasing sprite size compensates by making fewer sprites fill more visual space
+const MOVEMENT_SCALE_MULTIPLIERS: Record<MovementMode, number> = {
+  spiral: 1.4,      // 40% larger sprites to fill space despite wide circular movement
+  orbit: 1.35,      // 35% larger sprites for orbital patterns
+  comet: 1.3,       // 30% larger sprites for long comet trails
+  wavefront: 1.25,  // 25% larger sprites for wavefront patterns
+  ripple: 1.15,     // 15% larger sprites for ripple effects
+  cascade: 1.1,     // 10% larger sprites for cascading patterns
+  drift: 1.0,       // No adjustment
+  pulse: 1.0,       // No adjustment
+  sway: 1.0,        // No adjustment
+  zigzag: 1.0,      // No adjustment
+};
 
 type PaletteId = (typeof palettes)[number]["id"];
 
@@ -67,21 +95,7 @@ export type SpriteMode =
   | "ring"
   | "diamond"
   | "star"
-  | "line"
-  | "icon";
-
-interface IconTile {
-  kind: "icon";
-  iconId: string;
-  tint: string;
-  u: number;
-  v: number;
-  scale: number;
-  blendMode: BlendModeKey;
-  rotationBase: number;
-  rotationDirection: number;
-  rotationSpeed: number;
-}
+  | "line";
 
 interface ShapeTile {
   kind: "shape";
@@ -94,16 +108,19 @@ interface ShapeTile {
   rotationBase: number;
   rotationDirection: number;
   rotationSpeed: number;
+  // Store random multipliers for dynamic recalculation without regeneration
+  rotationBaseMultiplier: number; // Random multiplier for rotationBase (-1 to 1)
+  rotationSpeedMultiplier: number; // Random multiplier for rotationSpeed (0.6 to 1.2)
 }
 
-type PreparedTile = IconTile | ShapeTile;
+type PreparedTile = ShapeTile;
 
 interface PreparedLayer {
   tiles: PreparedTile[];
   tileCount: number;
   blendMode: BlendModeKey;
   opacity: number;
-  mode: "icon" | "shape";
+  mode: "shape";
   baseSizeRatio: number;
 }
 
@@ -114,9 +131,9 @@ interface PreparedSprite {
 
 export interface GeneratorState {
   seed: string;
-  icon: PixelIcon;
   paletteId: string;
   paletteVariance: number;
+  hueShift: number;
   scalePercent: number;
   scaleBase: number;
   scaleSpread: number;
@@ -126,7 +143,6 @@ export interface GeneratorState {
   previousBlendMode: BlendModeKey;
   layerOpacity: number;
   spriteMode: SpriteMode;
-  iconAssetId: string;
   movementMode: MovementMode;
   backgroundMode: BackgroundMode;
   motionSpeed: number;
@@ -151,160 +167,30 @@ const shapeModes = [
   "star",
   "line",
 ] as const;
-const spriteModePool: SpriteMode[] = [...shapeModes, "icon"];
+const spriteModePool: SpriteMode[] = [...shapeModes];
 
 type ShapeMode = (typeof shapeModes)[number];
 
-const shapeIcons: Record<ShapeMode, PixelIcon> = {
-  rounded: {
-    id: "shape-rounded",
-    name: "Rounded Square",
-    grid: [
-      "00011100",
-      "00111110",
-      "01111111",
-      "01111111",
-      "01111111",
-      "01111111",
-      "00111110",
-      "00011100",
-    ],
-  },
-  circle: {
-    id: "shape-circle",
-    name: "Circle",
-    grid: [
-      "00011000",
-      "00111100",
-      "01111110",
-      "11111111",
-      "11111111",
-      "01111110",
-      "00111100",
-      "00011000",
-    ],
-  },
-  square: {
-    id: "shape-square",
-    name: "Square",
-    grid: [
-      "01111110",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "01111110",
-    ],
-  },
-  triangle: {
-    id: "shape-triangle",
-    name: "Triangle",
-    grid: [
-      "00001000",
-      "00011000",
-      "00111100",
-      "01111110",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-    ],
-  },
-  hexagon: {
-    id: "shape-hexagon",
-    name: "Hexagon",
-    grid: [
-      "00011000",
-      "00111100",
-      "01111110",
-      "11111111",
-      "11111111",
-      "01111110",
-      "00111100",
-      "00011000",
-    ],
-  },
-  ring: {
-    id: "shape-ring",
-    name: "Ring",
-    grid: [
-      "00111100",
-      "01100110",
-      "11000011",
-      "10000001",
-      "10000001",
-      "11000011",
-      "01100110",
-      "00111100",
-    ],
-  },
-  diamond: {
-    id: "shape-diamond",
-    name: "Diamond",
-    grid: [
-      "00001000",
-      "00011100",
-      "00111110",
-      "01111111",
-      "00111110",
-      "00011100",
-      "00001000",
-      "00000000",
-    ],
-  },
-  star: {
-    id: "shape-star",
-    name: "Star",
-    grid: [
-      "00001000",
-      "01011100",
-      "01111110",
-      "11111111",
-      "01111110",
-      "01011100",
-      "00001000",
-      "00000000",
-    ],
-  },
-  line: {
-    id: "shape-line",
-    name: "Line",
-    grid: [
-      "00000000",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "11111111",
-      "00000000",
-      "00000000",
-    ],
-  },
-};
-
 export const DEFAULT_STATE: GeneratorState = {
   seed: "DEADBEEF",
-  icon: pixelIcons[0],
   paletteId: defaultPaletteId,
-  paletteVariance: 50,
-  scalePercent: 50,
-  scaleBase: 60,
-  scaleSpread: 55,
-  motionIntensity: 48,
+  paletteVariance: 68,
+  hueShift: 18,
+  scalePercent: 320,
+  scaleBase: 72,
+  scaleSpread: 62,
+  motionIntensity: 58,
   blendMode: "NONE",
   blendModeAuto: true,
   previousBlendMode: "NONE",
-  layerOpacity: 68,
-  spriteMode: "rounded",
-  iconAssetId: pixelArtIconIds[0],
-  movementMode: "sway",
+  layerOpacity: 74,
+  spriteMode: "star",
+  movementMode: "orbit",
   backgroundMode: "palette",
-  motionSpeed: 100,
-  rotationEnabled: false,
-  rotationAmount: 0,
-  rotationSpeed: 0,
+  motionSpeed: 8.5,
+  rotationEnabled: true,
+  rotationAmount: 72,
+  rotationSpeed: 48,
 };
 
 const SEED_ALPHABET = "0123456789ABCDEF";
@@ -405,6 +291,11 @@ const hslToHex = (h: number, s: number, l: number) => {
     .join("")}`;
 };
 
+const shiftHue = (hex: string, hueShiftDegrees: number) => {
+  const [h, s, l] = hexToHsl(hex);
+  return hslToHex(h + hueShiftDegrees, s, l);
+};
+
 const jitterColor = (hex: string, variance: number, random: () => number) => {
   const [h, s, l] = hexToHsl(hex);
   const hueShift = (random() - 0.5) * variance * 60;
@@ -420,12 +311,6 @@ const blendModePool: BlendModeKey[] = [
   "HARD_LIGHT",
   "OVERLAY",
 ];
-
-const resolveIconAssetId = (id: string | undefined) =>
-  id && pixelArtIconIds.includes(id) ? id : pixelArtIconIds[0];
-
-const getRandomAssetId = () =>
-  pixelArtIconIds[Math.floor(Math.random() * pixelArtIconIds.length)];
 
 const computeMovementOffsets = (
   mode: MovementMode,
@@ -449,6 +334,7 @@ const computeMovementOffsets = (
     speedFactor,
   } = data;
   const layerFactor = 1 + layerIndex * 0.12;
+  // Speed is already applied to the time parameter, so use speedFactor directly
   const velocity = Math.max(speedFactor, 0);
   const baseTime = velocity === 0 ? 0 : time * velocity;
   const phased = baseTime + phase;
@@ -582,14 +468,20 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const computeSprite = (state: GeneratorState): PreparedSprite => {
   const rng = createMulberry32(hashSeed(state.seed));
   const palette = getPalette(state.paletteId);
-  const variance = clamp(state.paletteVariance / 100, 0, 1);
+  // Allow variance up to 1.5 (150% internal value) for more color variation
+  const variance = clamp(state.paletteVariance / 100, 0, 1.5);
 
   const colorRng = createMulberry32(hashSeed(`${state.seed}-color`));
   const positionRng = createMulberry32(hashSeed(`${state.seed}-position`));
-  const chosenPalette = palette.colors.map((color) =>
+  // Apply global hue shift to palette colors (0-100 maps to 0-360 degrees)
+  const hueShiftDegrees = (state.hueShift / 100) * 360;
+  const shiftedPalette = palette.colors.map((color) =>
+    shiftHue(color, hueShiftDegrees),
+  );
+  const chosenPalette = shiftedPalette.map((color) =>
     jitterColor(color, variance, colorRng),
   );
-  const backgroundBase = palette.colors[0];
+  const backgroundBase = shiftedPalette[0];
   const presetBackground = backgroundPresets[state.backgroundMode];
   const background =
     presetBackground === null
@@ -603,15 +495,17 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
   const baseScale = lerp(MIN_TILE_SCALE, MAX_TILE_SCALE, baseScaleValue);
   const minScaleFactor = lerp(baseScale, MIN_TILE_SCALE, spreadValue);
   const maxScaleFactor = lerp(baseScale, MAX_TILE_SCALE, spreadValue);
-  const rotationRange = state.rotationEnabled
-    ? degToRad(clamp(state.rotationAmount, 0, MAX_ROTATION_DEGREES))
-    : 0;
+  // Always calculate rotation range based on rotationAmount, regardless of rotationEnabled
+  // This allows toggling rotationEnabled without regenerating sprites
+  const rotationRange = degToRad(clamp(state.rotationAmount, 0, MAX_ROTATION_DEGREES));
   const rotationSpeedBase = clamp(state.rotationSpeed, 0, 100) / 100;
 
-  const baseIconId = resolveIconAssetId(state.iconAssetId);
-  const isIconMode = state.spriteMode === "icon";
   const isShapeMode = shapeModes.includes(state.spriteMode as ShapeMode);
   const activeShape = isShapeMode ? (state.spriteMode as ShapeMode) : "rounded";
+
+  // Apply mode-specific scale multiplier to improve canvas coverage
+  // Modes with large movement radii (spiral, orbit) benefit from larger sprites
+  const modeScaleMultiplier = MOVEMENT_SCALE_MULTIPLIERS[state.movementMode] ?? 1.0;
 
   const layers: PreparedLayer[] = [];
   const opacityBase = clamp(state.layerOpacity / 100, 0.12, 1);
@@ -629,10 +523,10 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
         ? densityRatio
         : clamp((densityRatio - threshold) / (1 - threshold), 0, 1);
 
-    const baseSizeBase = isIconMode ? 0.18 : 0.22;
+    const baseSizeBase = 0.22;
     const baseSizeRatio =
-      baseSizeBase * (1 + layerIndex * (isIconMode ? 0.12 : 0.18));
-    const maxTiles = isIconMode ? 36 : 60;
+      baseSizeBase * (1 + layerIndex * 0.18) * modeScaleMultiplier;
+    const maxTiles = 60;
     const minTiles = layerIndex === 0 ? 1 : 0;
     const desiredTiles = 1 + normalizedDensity * (maxTiles - 1);
     const tileTotal = Math.max(minTiles, Math.round(desiredTiles));
@@ -651,6 +545,12 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
     const gridRows = Math.max(1, Math.ceil(tileTotal / gridCols));
     const tiles: PreparedTile[] = [];
 
+    // Adjust positioning bounds based on scale - larger sprites need tighter spacing
+    // When scale is high, reduce the range so sprites are positioned closer together
+    const scaleRatio = baseScale / MAX_TILE_SCALE; // 0-1, where 1 = max scale
+    const minBound = lerp(0.05, 0.2, scaleRatio); // At max scale, use 0.2 instead of 0.05
+    const maxBound = lerp(0.95, 0.8, scaleRatio); // At max scale, use 0.8 instead of 0.95
+    
     for (let index = 0; index < tileTotal; index += 1) {
       const col = index % gridCols;
       const row = Math.floor(index / gridCols);
@@ -658,8 +558,8 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
       const jitterStrengthY = gridRows === 1 ? 0.2 : 0.6;
       const jitterX = (positionRng() - 0.5) * jitterStrengthX;
       const jitterY = (positionRng() - 0.5) * jitterStrengthY;
-      const u = clamp((col + 0.5 + jitterX) / gridCols, 0.05, 0.95);
-      const v = clamp((row + 0.5 + jitterY) / gridRows, 0.05, 0.95);
+      const u = clamp((col + 0.5 + jitterX) / gridCols, minBound, maxBound);
+      const v = clamp((row + 0.5 + jitterY) / gridRows, minBound, maxBound);
 
       const scaleRange = Math.max(0, maxScaleFactor - minScaleFactor);
       const scale =
@@ -670,48 +570,35 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
               MIN_TILE_SCALE,
               MAX_TILE_SCALE,
             );
-      const rotationBase =
-        rotationRange > 0 ? (positionRng() - 0.5) * 2 * rotationRange : 0;
+      // Store random multipliers for dynamic recalculation
+      const rotationBaseMultiplier = rotationRange > 0 ? (positionRng() - 0.5) * 2 : 0;
+      const rotationBase = rotationRange * rotationBaseMultiplier;
       const rotationDirection = positionRng() > 0.5 ? 1 : -1;
+      const rotationSpeedMultiplier = rotationSpeedBase > 0 ? (0.6 + positionRng() * 0.6) : 0;
       const rotationSpeedValue =
         rotationSpeedBase > 0
-          ? rotationSpeedBase * ROTATION_SPEED_MAX * (0.6 + positionRng() * 0.6)
+          ? rotationSpeedBase * ROTATION_SPEED_MAX * rotationSpeedMultiplier
           : 0;
       const tileBlend = state.blendModeAuto
         ? (blendModePool[Math.floor(rng() * blendModePool.length)] ?? "NONE")
         : state.blendMode;
 
-      if (isIconMode) {
-        const tint =
-          chosenPalette[Math.floor(colorRng() * chosenPalette.length)];
-        tiles.push({
-          kind: "icon",
-          iconId: baseIconId,
-          tint,
-          u,
-          v,
-          scale,
-          blendMode: tileBlend,
-          rotationBase,
-          rotationDirection,
-          rotationSpeed: rotationSpeedValue,
-        });
-      } else {
-        const tint =
-          chosenPalette[Math.floor(colorRng() * chosenPalette.length)];
-        tiles.push({
-          kind: "shape",
-          shape: activeShape,
-          tint,
-          u,
-          v,
-          scale,
-          blendMode: tileBlend,
-          rotationBase,
-          rotationDirection,
-          rotationSpeed: rotationSpeedValue,
-        });
-      }
+      const tint =
+        chosenPalette[Math.floor(colorRng() * chosenPalette.length)];
+      tiles.push({
+        kind: "shape",
+        shape: activeShape,
+        tint,
+        u,
+        v,
+        scale,
+        blendMode: tileBlend,
+        rotationBase,
+        rotationDirection,
+        rotationSpeed: rotationSpeedValue,
+        rotationBaseMultiplier,
+        rotationSpeedMultiplier,
+      });
     }
 
     layers.push({
@@ -719,7 +606,7 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
       tileCount: tileTotal,
       blendMode: layerBlendMode,
       opacity,
-      mode: isIconMode ? "icon" : "shape",
+      mode: "shape",
       baseSizeRatio,
     });
   }
@@ -729,8 +616,8 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
 
 export interface SpriteController {
   getState: () => GeneratorState;
+  applyState: (state: GeneratorState) => void;
   randomizeAll: () => void;
-  randomizeIcon: () => void;
   randomizeColors: () => void;
   randomizeScale: () => void;
   randomizeScaleRange: () => void;
@@ -740,6 +627,7 @@ export interface SpriteController {
   setScaleBase: (value: number) => void;
   setScaleSpread: (value: number) => void;
   setPaletteVariance: (value: number) => void;
+  setHueShift: (value: number) => void;
   setMotionIntensity: (value: number) => void;
   setMotionSpeed: (value: number) => void;
   setBlendMode: (mode: BlendModeOption) => void;
@@ -747,7 +635,6 @@ export interface SpriteController {
   setLayerOpacity: (value: number) => void;
   setSpriteMode: (mode: SpriteMode) => void;
   setMovementMode: (mode: MovementMode) => void;
-  setIconAsset: (iconId: string) => void;
   setRotationEnabled: (value: boolean) => void;
   setRotationAmount: (value: number) => void;
   setRotationSpeed: (value: number) => void;
@@ -766,16 +653,11 @@ export const createSpriteController = (
 ): SpriteController => {
   let state: GeneratorState = {
     ...DEFAULT_STATE,
-    icon: getRandomIcon(),
-    iconAssetId: resolveIconAssetId(DEFAULT_STATE.iconAssetId),
     seed: generateSeedString(),
     previousBlendMode: DEFAULT_STATE.blendMode,
   };
   let prepared = computeSprite(state);
   let p5Instance: p5 | null = null;
-  const iconGraphics: Record<string, p5.Image | null> = Object.fromEntries(
-    pixelArtIconAssets.map(({ id }) => [id, null]),
-  );
 
   const notifyState = () => {
     options.onStateChange?.({ ...state });
@@ -793,6 +675,9 @@ export const createSpriteController = (
   const sketch = (p: p5) => {
     let canvas: p5.Renderer;
     let animationTime = 0;
+    let scaledAnimationTime = 0; // Scaled time that accumulates smoothly
+    let currentSpeedFactor = 1.0; // Current speed factor (smoothly interpolated)
+    let targetSpeedFactor = 1.0; // Target speed factor from slider
 
     p.setup = () => {
       const size = container.clientWidth || 640;
@@ -803,20 +688,50 @@ export const createSpriteController = (
       p.noSmooth();
       p.imageMode(p.CENTER);
 
-      pixelArtIconAssets.forEach(({ id, url }) => {
-        if (iconGraphics[id]) {
-          return;
-        }
-        p.loadImage(url, (img) => {
-          iconGraphics[id] = img;
-        });
-      });
     };
 
-    p.windowResized = () => {
-      const size = container.clientWidth || 640;
+    const resizeCanvas = () => {
+      // In fullscreen, use viewport dimensions; otherwise use container width
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      
+      let size: number;
+      if (isFullscreen) {
+        // In fullscreen: use viewport width to create a large square canvas
+        // CSS will scale it down to fit the height, making it appear larger
+        size = window.innerWidth;
+      } else {
+        // Normal mode: use container width
+        size = container.clientWidth || 640;
+      }
+      
       p.resizeCanvas(size, size);
+      // Force immediate redraw after resize
+      p.redraw();
     };
+
+    p.windowResized = resizeCanvas;
+    
+    // Also resize on fullscreen changes
+    const handleFullscreenChange = () => {
+      // Use a longer delay to ensure browser has updated dimensions
+      setTimeout(() => {
+        resizeCanvas();
+        // Force a redraw
+        if (p5Instance) {
+          p5Instance.redraw();
+        }
+      }, 200);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
     p.draw = () => {
       const drawSize = Math.min(p.width, p.height);
@@ -824,11 +739,27 @@ export const createSpriteController = (
       const offsetY = (p.height - drawSize) / 2;
       const motionScale = clamp(state.motionIntensity / 100, 0, 1.5);
       const deltaMs = typeof p.deltaTime === "number" ? p.deltaTime : 16.666;
-      const speedFactor = Math.max(state.motionSpeed / 100, 0);
-      animationTime += speedFactor * (deltaMs / 16.666);
-      const globalTime = animationTime;
-      const baseIconId = resolveIconAssetId(state.iconAssetId);
-
+      const MOTION_SPEED_MAX_INTERNAL = 12.5;
+      // Apply mode-specific speed multiplier to normalize perceived speed across modes
+      // Higher multiplier = slower animation (divide to slow down)
+      const modeSpeedMultiplier = MOVEMENT_SPEED_MULTIPLIERS[state.movementMode] ?? 1.0;
+      const baseSpeedFactor = Math.max(state.motionSpeed / MOTION_SPEED_MAX_INTERNAL, 0);
+      targetSpeedFactor = baseSpeedFactor / modeSpeedMultiplier;
+      
+      // Accumulate base time at constant rate
+      const deltaTime = deltaMs / 16.666;
+      animationTime += deltaTime;
+      
+      // Smoothly interpolate speed factor to prevent jiggling
+      // Use a very fast lerp (0.95) for near-instant but smooth transitions
+      const speedLerpRate = 0.95;
+      const previousSpeedFactor = currentSpeedFactor;
+      currentSpeedFactor = lerp(currentSpeedFactor, targetSpeedFactor, speedLerpRate);
+      
+      // Accumulate scaled time using the interpolated speed factor
+      // Use the average of previous and current speed for this frame to ensure smoothness
+      const averageSpeedFactor = (previousSpeedFactor + currentSpeedFactor) / 2;
+      scaledAnimationTime += deltaTime * averageSpeedFactor;
       p.background(prepared.background);
       const ctx = p.drawingContext as CanvasRenderingContext2D;
       ctx.imageSmoothingEnabled = false;
@@ -849,69 +780,59 @@ export const createSpriteController = (
 
         p.push();
         layer.tiles.forEach((tile, tileIndex) => {
-          const tileBlendMode = tile.blendMode ?? layer.blendMode;
+          // Use state.blendMode when blendModeAuto is false, otherwise use stored tile/layer blend mode
+          const tileBlendMode = state.blendModeAuto
+            ? (tile.blendMode ?? layer.blendMode)
+            : state.blendMode;
           p.blendMode(blendMap[tileBlendMode] ?? p.BLEND);
           const normalizedU = ((tile.u % 1) + 1) % 1;
           const normalizedV = ((tile.v % 1) + 1) % 1;
           const baseX = offsetX + normalizedU * drawSize;
           const baseY = offsetY + normalizedV * drawSize;
 
-          if (tile.kind === "icon") {
-            const iconGraphic =
-              iconGraphics[tile.iconId] ?? iconGraphics[baseIconId];
-            if (!iconGraphic) {
-              return;
-            }
-            const baseIconSize =
-              baseLayerSize * tile.scale * (1 + layerIndex * 0.08);
-            const movement = computeMovementOffsets(state.movementMode, {
-              time: globalTime,
-              phase: tileIndex * 9,
-              motionScale,
-              layerIndex,
-              baseUnit: baseIconSize,
-              layerTileSize: baseLayerSize,
-              speedFactor,
-            });
-            const iconSize = baseIconSize * movement.scaleMultiplier;
-
-            const rotationTime = globalTime * speedFactor;
-            const rotationSpeed = tile.rotationSpeed;
-            const rotationAngle =
-              (state.rotationEnabled ? tile.rotationBase : 0) +
-              rotationSpeed * tile.rotationDirection * rotationTime;
-            p.push();
-            p.translate(baseX + movement.offsetX, baseY + movement.offsetY);
-            if (rotationAngle !== 0) {
-              p.rotate(rotationAngle);
-            }
-            const tintColour = p.color(tile.tint);
-            tintColour.setAlpha(Math.round(layer.opacity * 255));
-            p.tint(tintColour);
-            p.image(iconGraphic, 0, 0, iconSize, iconSize);
-            p.pop();
-          } else if (tile.kind === "shape") {
+          if (tile.kind === "shape") {
             const baseShapeSize =
               baseLayerSize * tile.scale * (1 + layerIndex * 0.08);
             const movement = computeMovementOffsets(state.movementMode, {
-              time: globalTime,
+              time: scaledAnimationTime, // Use smoothly accumulating scaled time
               phase: tileIndex * 7,
               motionScale,
               layerIndex,
               baseUnit: baseShapeSize,
               layerTileSize: baseLayerSize,
-              speedFactor,
+              speedFactor: 1.0, // Speed is already applied to scaledAnimationTime
             });
             const shapeSize = baseShapeSize * movement.scaleMultiplier;
             const fillColor = p.color(tile.tint);
-            fillColor.setAlpha(Math.round(layer.opacity * 255));
+            // Use state.layerOpacity directly instead of stored layer.opacity for dynamic updates
+            const opacityValue = clamp(state.layerOpacity / 100, 0.12, 1);
+            fillColor.setAlpha(Math.round(opacityValue * 255));
 
             p.push();
-            p.translate(baseX + movement.offsetX, baseY + movement.offsetY);
-            const rotationTime = globalTime * speedFactor;
-            const rotationSpeed = tile.rotationSpeed;
+            const halfSize = shapeSize / 2;
+            const allowableOverflow = Math.max(drawSize * 0.35, shapeSize * 0.8);
+            const clampedX = clamp(
+              baseX + movement.offsetX,
+              offsetX + halfSize - allowableOverflow,
+              offsetX + drawSize - halfSize + allowableOverflow,
+            );
+            const clampedY = clamp(
+              baseY + movement.offsetY,
+              offsetY + halfSize - allowableOverflow,
+              offsetY + drawSize - halfSize + allowableOverflow,
+            );
+            p.translate(clampedX, clampedY);
+            const rotationTime = scaledAnimationTime; // Use smoothly accumulating scaled time
+            // Recalculate rotation speed dynamically from state (no regeneration needed)
+            const rotationSpeedBase = clamp(state.rotationSpeed, 0, 100) / 100;
+            const rotationSpeed = rotationSpeedBase > 0
+              ? rotationSpeedBase * ROTATION_SPEED_MAX * tile.rotationSpeedMultiplier
+              : 0;
+            // Recalculate rotation base dynamically from state (no regeneration needed)
+            const rotationRange = degToRad(clamp(state.rotationAmount, 0, MAX_ROTATION_DEGREES));
+            const rotationBase = rotationRange * tile.rotationBaseMultiplier;
             const rotationAngle =
-              (state.rotationEnabled ? tile.rotationBase : 0) +
+              (state.rotationEnabled ? rotationBase : 0) +
               rotationSpeed * tile.rotationDirection * rotationTime;
             if (rotationAngle !== 0) {
               p.rotate(rotationAngle);
@@ -919,7 +840,6 @@ export const createSpriteController = (
             p.noStroke();
             p.fill(fillColor);
 
-            const halfSize = shapeSize / 2;
             switch (tile.shape) {
               case "rounded": {
                 const cornerRadius = shapeSize * 0.3;
@@ -1032,26 +952,24 @@ export const createSpriteController = (
 
   const controller: SpriteController = {
     getState: () => ({ ...state }),
+    applyState: (newState: GeneratorState) => {
+      state = { ...newState };
+      updateSprite();
+    },
     randomizeAll: () => {
       updateSeed();
       const nextMode =
         spriteModePool[Math.floor(Math.random() * spriteModePool.length)];
       state.spriteMode = nextMode;
-      if (nextMode === "icon") {
-        state.iconAssetId = getRandomAssetId();
-        state.icon = getRandomIcon();
-      } else {
-        state.icon = shapeIcons[nextMode as ShapeMode];
-        state.iconAssetId = resolveIconAssetId(DEFAULT_STATE.iconAssetId);
-      }
       state.paletteId = getRandomPalette().id;
-      state.scalePercent = randomInt(MIN_DENSITY_PERCENT, 800);
-      state.scaleBase = randomInt(35, 80);
-      state.scaleSpread = randomInt(30, 95);
-      state.paletteVariance = randomInt(12, 88);
-      state.motionIntensity = randomInt(15, 90);
-      state.motionSpeed = randomInt(20, 85);
-      state.layerOpacity = randomInt(40, 82);
+      state.scalePercent = randomInt(220, 960);
+      state.scaleBase = randomInt(52, 88);
+      state.scaleSpread = randomInt(42, 96);
+      state.paletteVariance = randomInt(32, 128);
+      state.hueShift = randomInt(0, 85);
+      state.motionIntensity = randomInt(42, 98);
+      state.motionSpeed = randomInt(4, 11);
+      state.layerOpacity = randomInt(55, 88);
       state.blendMode =
         blendModePool[Math.floor(Math.random() * blendModePool.length)];
       state.blendModeAuto = true;
@@ -1059,39 +977,40 @@ export const createSpriteController = (
       state.movementMode =
         movementModes[Math.floor(Math.random() * movementModes.length)];
       state.backgroundMode = "palette";
-      updateSprite();
-    },
-    randomizeIcon: () => {
-      updateSeed();
-      if (state.spriteMode === "icon") {
-        state.iconAssetId = getRandomAssetId();
-      } else {
-        const nextShape =
-          shapeModes[Math.floor(Math.random() * shapeModes.length)];
-        state.spriteMode = nextShape;
-        state.icon = shapeIcons[nextShape];
-      }
+      const rotationActive = Math.random() > 0.35;
+      state.rotationEnabled = rotationActive;
+      state.rotationAmount = rotationActive
+        ? randomInt(28, 145)
+        : randomInt(0, 35);
+      state.rotationSpeed = rotationActive ? randomInt(18, 72) : 0;
       updateSprite();
     },
     randomizeColors: () => {
       updateSeed();
       state.paletteId = getRandomPalette().id;
-      state.paletteVariance = randomInt(15, 85);
+      state.paletteVariance = randomInt(32, 126);
+      state.hueShift = randomInt(0, 85);
       updateSprite();
     },
     randomizeScale: () => {
-      state.scaleBase = randomInt(35, 80);
+      state.scaleBase = randomInt(50, 88);
       updateSprite();
     },
     randomizeScaleRange: () => {
-      state.scaleSpread = randomInt(30, 95);
+      state.scaleSpread = randomInt(42, 96);
       updateSprite();
     },
     randomizeMotion: () => {
-      state.motionIntensity = randomInt(15, 90);
+      state.motionIntensity = randomInt(40, 98);
       state.movementMode =
         movementModes[Math.floor(Math.random() * movementModes.length)];
-      state.motionSpeed = randomInt(25, 90);
+      state.motionSpeed = randomInt(5, 12);
+      const rotationActive = Math.random() > 0.45;
+      state.rotationEnabled = rotationActive;
+      state.rotationAmount = rotationActive
+        ? randomInt(24, 140)
+        : Math.min(state.rotationAmount, 20);
+      state.rotationSpeed = rotationActive ? randomInt(15, 68) : 0;
       updateSprite();
     },
     randomizeBlendMode: () => {
@@ -1111,22 +1030,34 @@ export const createSpriteController = (
       applyState({ scaleSpread: clamp(value, 0, 100) });
     },
     setPaletteVariance: (value: number) => {
-      applyState({ paletteVariance: clamp(value, 0, 100) });
+      // Palette variance affects sprite colors, so regeneration is needed
+      // Palette variance can go up to 150 internally, but UI shows 0-100%
+      applyState({ paletteVariance: clamp(value, 0, 150) });
+    },
+    setHueShift: (value: number) => {
+      // Hue shift affects sprite colors, so regeneration is needed
+      // Hue shift is stored as 0-100 (maps to 0-360 degrees)
+      applyState({ hueShift: clamp(value, 0, 100) });
     },
     setMotionIntensity: (value: number) => {
-      applyState({ motionIntensity: clamp(value, 0, 100) });
+      // Motion intensity is applied directly in rendering, no regeneration needed
+      applyState({ motionIntensity: clamp(value, 0, 100) }, { recompute: false });
     },
     setMotionSpeed: (value: number) => {
-      applyState({ motionSpeed: clamp(value, 0, 100) }, { recompute: false });
+      applyState({ motionSpeed: clamp(value, 0, 12.5) }, { recompute: false });
     },
     setBlendMode: (mode: BlendModeOption) => {
+      // Blend mode is applied directly in rendering (tile.blendMode ?? layer.blendMode ?? state.blendMode)
+      // When blendModeAuto is false, state.blendMode is used, so no regeneration needed
       applyState({
         blendModeAuto: false,
         blendMode: mode,
         previousBlendMode: mode,
-      });
+      }, { recompute: false });
     },
     setBlendModeAuto: (value: boolean) => {
+      // When blendModeAuto changes, we need to regenerate to assign random blend modes to tiles
+      // But if turning it off, we can use state.blendMode without regeneration
       if (value) {
         const stored = state.blendModeAuto
           ? state.previousBlendMode
@@ -1137,20 +1068,19 @@ export const createSpriteController = (
         });
       } else {
         const fallback = state.previousBlendMode ?? state.blendMode ?? "NONE";
-        applyState({ blendModeAuto: false, blendMode: fallback });
+        // When turning off auto, we can apply state.blendMode without regeneration
+        applyState({ blendModeAuto: false, blendMode: fallback }, { recompute: false });
       }
     },
     setLayerOpacity: (value: number) => {
-      applyState({ layerOpacity: clamp(value, 15, 100) });
+      // Layer opacity is applied directly in rendering, no regeneration needed
+      applyState({ layerOpacity: clamp(value, 15, 100) }, { recompute: false });
     },
     setSpriteMode: (mode: SpriteMode) => {
-      if (mode === "icon") {
-        applyState({ spriteMode: mode });
+      if (!shapeModes.includes(mode as ShapeMode)) {
         return;
       }
-      if ((shapeModes as readonly string[]).includes(mode)) {
-        applyState({ spriteMode: mode, icon: shapeIcons[mode as ShapeMode] });
-      }
+      applyState({ spriteMode: mode });
     },
     setMovementMode: (mode: MovementMode) => {
       if (!movementModes.includes(mode)) {
@@ -1158,12 +1088,11 @@ export const createSpriteController = (
       }
       applyState({ movementMode: mode }, { recompute: false });
     },
-    setIconAsset: (iconId: string) => {
-      const resolved = resolveIconAssetId(iconId);
-      applyState({ iconAssetId: resolved });
-    },
     setRotationEnabled: (value: boolean) => {
-      applyState({ rotationEnabled: value });
+      // Don't recompute sprites - rotation offsets are already calculated
+      // Just update state so rendering can toggle them on/off
+      state.rotationEnabled = value;
+      notifyState();
     },
     setRotationAmount: (value: number) => {
       applyState({
@@ -1193,7 +1122,7 @@ export const createSpriteController = (
         scaleSpread: 45,
         movementMode: "pulse",
         motionIntensity: 28,
-        motionSpeed: 65,
+        motionSpeed: 12.5,
         rotationEnabled: true,
         rotationAmount: 35,
       });
@@ -1207,7 +1136,7 @@ export const createSpriteController = (
         paletteVariance: 86,
         movementMode: "orbit",
         motionIntensity: 74,
-        motionSpeed: 90,
+        motionSpeed: 11,
         blendMode: "SCREEN",
         blendModeAuto: false,
         previousBlendMode: "SCREEN",
@@ -1225,7 +1154,7 @@ export const createSpriteController = (
         paletteVariance: 18,
         movementMode: "drift",
         motionIntensity: 20,
-        motionSpeed: 45,
+        motionSpeed: 5.5,
         blendMode: "MULTIPLY",
         blendModeAuto: false,
         previousBlendMode: "MULTIPLY",
@@ -1238,8 +1167,6 @@ export const createSpriteController = (
       state = {
         ...DEFAULT_STATE,
         seed: generateSeedString(),
-        icon: getRandomIcon(),
-        iconAssetId: pixelArtIconIds[0],
         previousBlendMode: DEFAULT_STATE.blendMode,
       };
       updateSprite();

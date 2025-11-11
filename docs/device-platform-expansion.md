@@ -48,6 +48,16 @@ _Last updated: 2025-11-10_
   - Use CSS Grid to allow the canvas to lock at a square aspect while controls scroll independently.
   - Persist tab state in URL hash so context is not lost on orientation changes.
 
+#### 3.1.1 Mobile Navigation Collapse
+
+- **Goal:** Optimize screen real estate on small viewports by collapsing navigation into compact menus.
+- **Technical Guidance:**
+  - **Side Navigation:** When viewport width falls below a threshold (e.g., `768px`), collapse the side navigation into a hamburger menu (overflow menu). Place this hamburger icon in the canvas card, outside the canvas area, positioned top-left.
+  - **Settings Menu:** Collapse the top-right settings (theme toggle, dark/light mode) into a single cog icon, positioned top-right of the canvas card, outside the canvas area.
+  - Both menus should use RetroUI button styling with appropriate touch targets (44×44 px minimum).
+  - Implement slide-out drawer or dropdown menu patterns for the navigation menu, ensuring smooth animations and proper z-index layering.
+  - Ensure menu state persists during orientation changes and doesn't interfere with fullscreen mode.
+
 ### 3.2 Adaptive Render Budgets
 
 - **Goal:** Maintain smooth framerates on lower-power GPUs by scaling sprite counts.

@@ -36,15 +36,15 @@ export type MovementMode = (typeof movementModes)[number];
 // Based on analysis: drift uses 0.02 multiplier (slowest), sway uses 0.13 (fastest)
 // These multipliers ensure all modes feel balanced at 100% animation speed
 const MOVEMENT_SPEED_MULTIPLIERS: Record<MovementMode, number> = {
-  sway: 2.0,        // ~2x slower - halved speed from 1.0x (was reference)
+  sway: 4.0,        // ~4x slower (~50% of previous max speed)
   drift: 1.625,    // ~1.625x slower - quadrupled speed from 6.5x
   cascade: 2.9,     // ~2.9x slower (0.045 vs 0.13)
   comet: 3.0,       // ~3x slower - reduced speed by 25% from 2.4x
   ripple: 3.25,     // ~3.25x slower (avg 0.04 vs 0.13)
   spiral: 7.3,      // ~7.3x slower (~60% of previous max speed)
-  orbit: 1.8,       // ~1.8x slower (~60% of previous max speed)
+  orbit: 0.9,       // ~0.9x slower (~2x previous max speed)
   zigzag: 2.2,      // ~2.2x slower (0.06 vs 0.13)
-  pulse: 1.6,       // ~1.6x slower (avg 0.08 vs 0.13)
+  pulse: 2.7,       // ~2.7x slower (~60% of previous max speed)
   wavefront: 10.0,  // ~10x slower - wavefront uses phased * 0.055 internally, needs significant slowdown
 };
 

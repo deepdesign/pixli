@@ -38,8 +38,9 @@ import {
   type BackgroundMode,
 } from "./generator";
 import { PresetManager } from "./components/PresetManager";
+import { ExportModal } from "./components/ExportModal";
 import { Badge } from "./components/retroui/Badge";
-import { Moon, Monitor, Sun, Maximize2, X, RefreshCw, Bookmark } from "lucide-react";
+import { Moon, Monitor, Sun, Maximize2, X, RefreshCw, Bookmark, Camera } from "lucide-react";
 import { palettes } from "./data/palettes";
 import { shouldSplitColumns, getAppMainPadding } from "./lib/responsiveLayout";
 const BLEND_MODES: BlendModeOption[] = [
@@ -631,6 +632,7 @@ const App = () => {
   const [controlTabIndex, setControlTabIndex] = useState(0);
   const [motionTabIndex, setMotionTabIndex] = useState(0);
   const [showPresetManager, setShowPresetManager] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hudVisible, setHudVisible] = useState(true);
   const hudTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -722,6 +724,87 @@ const App = () => {
   const ThemeModeIconComponent = ThemeModeIcon;
 
   const ready = spriteState !== null && controllerRef.current !== null;
+
+  // Calculate current canvas size for export modal
+  // Use state to track canvas size so it updates when canvas is resized
+  const [currentCanvasSize, setCurrentCanvasSize] = useState({ width: 750, height: 750 });
+  
+  // Function to update canvas size from the actual canvas element
+  const updateCanvasSize = useCallback(() => {
+    if (!controllerRef.current) {
+      return;
+    }
+    
+    const p5Instance = controllerRef.current.getP5Instance();
+    if (!p5Instance || !p5Instance.canvas) {
+      return;
+    }
+    
+    const canvas = p5Instance.canvas as HTMLCanvasElement;
+    setCurrentCanvasSize({
+      width: canvas.width,
+      height: canvas.height,
+    });
+  }, []);
+  
+  // Update canvas size when controller or spriteState changes, and watch for canvas resize
+  useEffect(() => {
+    if (!controllerRef.current) {
+      setCurrentCanvasSize({ width: 750, height: 750 });
+      return;
+    }
+    
+    const p5Instance = controllerRef.current.getP5Instance();
+    if (!p5Instance || !p5Instance.canvas) {
+      setCurrentCanvasSize({ width: 750, height: 750 });
+      return;
+    }
+    
+    const canvas = p5Instance.canvas as HTMLCanvasElement;
+    const container = sketchContainerRef.current;
+    
+    // Update immediately
+    updateCanvasSize();
+    
+    // Watch the container for size changes (triggers when layout changes)
+    let containerResizeObserver: ResizeObserver | null = null;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      containerResizeObserver = new ResizeObserver(() => {
+        // Delay to ensure p5.js has processed the resize
+        setTimeout(() => {
+          updateCanvasSize();
+        }, 50);
+      });
+      containerResizeObserver.observe(container);
+    }
+    
+    // Also listen for window resize events (p5.js triggers resizeCanvas on windowResized)
+    const handleWindowResize = () => {
+      // Small delay to ensure p5.js has resized the canvas
+      setTimeout(() => {
+        updateCanvasSize();
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleWindowResize);
+    
+    return () => {
+      if (containerResizeObserver) {
+        containerResizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, [spriteState, controllerRef.current, updateCanvasSize]);
+  
+  // Also update canvas size when layout changes (columns split/merge)
+  useEffect(() => {
+    // Small delay to ensure layout has updated and canvas has resized
+    const timeoutId = setTimeout(() => {
+      updateCanvasSize();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isWideLayout, updateCanvasSize]);
 
   const currentPalette = useMemo(() => {
     return (
@@ -1506,18 +1589,6 @@ const App = () => {
         </Badge>
         </div>
       <div className="status-bar-right">
-          <Button
-            type="button"
-          size="icon"
-            variant="outline"
-          onClick={() => setShowPresetManager(true)}
-            disabled={!ready}
-          className="status-bar-presets-button"
-          aria-label="Presets"
-          title="Presets"
-          >
-          <Bookmark className="status-bar-icon" />
-          </Button>
         <Button
           type="button"
           size="icon"
@@ -1529,13 +1600,37 @@ const App = () => {
           title="Randomise all"
         >
           <RefreshCw className="status-bar-icon" />
-          </Button>
-      <Button
-        type="button"
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => setShowPresetManager(true)}
+          disabled={!ready}
+          className="status-bar-presets-button"
+          aria-label="Presets"
+          title="Presets"
+        >
+          <Bookmark className="status-bar-icon" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          onClick={() => setShowExportModal(true)}
+          disabled={!ready}
+          className="status-bar-export-button"
+          aria-label="Export canvas"
+          title="Export canvas"
+        >
+          <Camera className="status-bar-icon" />
+        </Button>
+        <Button
+          type="button"
           size="icon"
           variant="outline"
           onClick={isFullscreen ? handleFullscreenClose : handleFullscreenToggle}
-        disabled={!ready}
+          disabled={!ready}
           className="status-bar-fullscreen-button"
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -1545,8 +1640,8 @@ const App = () => {
           ) : (
             <Maximize2 className="status-bar-icon" />
           )}
-      </Button>
-    </div>
+        </Button>
+      </div>
     </div>
     );
   };
@@ -1778,6 +1873,15 @@ const App = () => {
           currentState={spriteState}
           onLoadPreset={handleLoadPreset}
           onClose={() => setShowPresetManager(false)}
+        />
+      )}
+      {showExportModal && (
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          p5Instance={controllerRef.current?.getP5Instance() || null}
+          currentCanvasSize={currentCanvasSize}
+          controller={controllerRef.current}
         />
       )}
 

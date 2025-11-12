@@ -1625,7 +1625,8 @@ body:has(.app-layout--wide) .app-header {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible; /* Allow button hover/active animations to extend beyond container */
+  padding: 2px; /* Add padding to accommodate button transform animations */
 }
 
 .status-bar--fullscreen-hud {
@@ -1656,6 +1657,7 @@ body:has(.app-layout--wide) .app-header {
   max-width: 95vw !important;
   white-space: nowrap !important;
   animation: fullscreen-hud-fade-in 0.2s ease-out;
+  overflow: visible !important; /* Allow button hover/active animations */
 }
 
 .status-bar--fullscreen-hud.status-bar--hidden {
@@ -1691,7 +1693,9 @@ body:has(.app-layout--wide) .app-header {
 
 
 .status-bar-randomise-button,
-.status-bar-fullscreen-button {
+.status-bar-fullscreen-button,
+.status-bar-export-button,
+.status-bar-presets-button {
   flex-shrink: 0;
 }
 
@@ -1887,6 +1891,629 @@ body:has(.app-layout--wide) .app-footer {
   background: color-mix(in srgb, hsl(142 76% 36%) 15%, transparent);
   border: 1px solid hsl(142 76% 36%);
   border-radius: var(--radius-sm);
+}
+
+/* Export Modal */
+.export-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.export-modal {
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: visible;
+  padding: theme("spacing.6");
+  position: relative;
+}
+
+.export-modal--compact {
+  max-width: 420px;
+}
+
+.export-modal-header {
+  @apply flex items-center justify-between;
+  margin-bottom: theme("spacing.5");
+}
+
+.export-modal-title {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--heading-color);
+  margin: 0;
+}
+
+.export-modal-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.export-modal-content {
+  @apply flex flex-col;
+  gap: theme("spacing.4");
+}
+
+/* Quick Export Section - Compact Preview */
+.export-quick-section {
+  @apply flex items-center gap-4;
+  padding: theme("spacing.3");
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.export-preview-compact {
+  @apply flex items-center gap-3;
+  flex: 1;
+}
+
+.export-thumbnail-compact {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.export-thumbnail-placeholder-compact {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.export-quick-info {
+  @apply flex flex-col;
+  gap: theme("spacing.1");
+  flex: 1;
+  min-width: 0;
+}
+
+.export-quick-size {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.export-quick-format {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.export-quick-size-label {
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.export-button-full-width {
+  width: 100%;
+  margin-top: theme("spacing.4");
+}
+
+/* RetroUI Accordion */
+.retro-accordion-item {
+  border: 2px solid var(--panel-border);
+  background: var(--panel-bg);
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 var(--panel-shadow);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.retro-accordion-item:hover {
+  box-shadow: 2px 2px 0 var(--panel-shadow);
+}
+
+.retro-accordion-item[data-state="open"] {
+  box-shadow: 2px 2px 0 var(--panel-shadow);
+}
+
+.retro-accordion-header {
+  @apply flex;
+}
+
+.retro-accordion-trigger {
+  @apply flex flex-1 items-center justify-between;
+  width: 100%;
+  padding: theme("spacing.2") theme("spacing.3");
+  font-family: var(--font-head);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: theme("spacing.2");
+}
+
+.retro-accordion-trigger:hover {
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+.retro-accordion-trigger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.retro-accordion-trigger[data-state="open"] {
+  color: var(--accent-primary);
+}
+
+.retro-accordion-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+}
+
+.retro-accordion-trigger[data-state="open"] .retro-accordion-chevron {
+  transform: rotate(180deg);
+  color: var(--accent-primary);
+}
+
+.retro-accordion-content {
+  overflow: hidden;
+}
+
+.retro-accordion-content[data-state="open"] {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.retro-accordion-content[data-state="closed"] {
+  animation: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.retro-accordion-content-inner {
+  padding: theme("spacing.3") theme("spacing.4") theme("spacing.4");
+}
+
+/* Export Accordion Specific Overrides */
+.export-accordion {
+  width: 100%;
+}
+
+.export-accordion-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Override accordion content inner padding for export modal */
+.export-accordion .retro-accordion-content-inner {
+  @apply flex flex-col;
+  gap: theme("spacing.4");
+  padding: theme("spacing.4");
+}
+
+
+
+.export-aspect-ratio-control {
+  @apply flex items-center gap-2;
+  margin-top: theme("spacing.2");
+}
+
+.export-aspect-ratio-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.export-aspect-ratio-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Compact Dimension Inputs */
+.export-dimension-inputs-compact {
+  @apply flex items-center gap-2;
+}
+
+.export-dimension-inputs-compact .preset-name-input {
+  flex: 1;
+}
+
+.export-dimension-inputs-compact button {
+  flex-shrink: 0;
+}
+
+.export-dimension-separator-compact {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Compact Presets */
+.export-presets-compact {
+  @apply flex flex-col;
+  gap: theme("spacing.3");
+}
+
+.export-preset-category {
+  @apply flex flex-col;
+  gap: theme("spacing.1");
+}
+
+.export-preset-category-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+  font-weight: 600;
+}
+
+.export-presets-row {
+  @apply flex flex-wrap;
+  gap: theme("spacing.1");
+}
+
+.export-preset-button-compact {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.7rem !important;
+  padding: theme("spacing.1.5") theme("spacing.2.5") !important;
+}
+
+/* Compact Format Buttons */
+.export-format-compact {
+  @apply flex gap-2;
+}
+
+.export-format-button-compact {
+  flex: 1;
+  @apply flex items-center justify-center;
+  padding: theme("spacing.2") theme("spacing.3");
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.export-format-button-compact input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.export-format-button-compact:has(input:checked) {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 15%, var(--panel-bg));
+  color: var(--accent-primary);
+}
+
+.export-format-button-compact:hover:not(:has(input:disabled)) {
+  border-color: var(--accent-primary);
+}
+
+
+.export-file-size-compact {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: theme("spacing.2");
+  border-top: 1px solid var(--panel-border);
+  margin-top: theme("spacing.2");
+  padding-top: theme("spacing.3");
+}
+
+.export-warning-compact {
+  color: var(--accent-primary);
+}
+
+/* Compact Progress */
+.export-progress-compact {
+  @apply flex items-center gap-3;
+  padding: theme("spacing.2");
+}
+
+.export-progress-bar-compact {
+  flex: 1;
+  height: 6px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.export-progress-fill-compact {
+  height: 100%;
+  background: var(--accent-primary);
+  transition: width 0.3s ease;
+}
+
+.export-progress-text-compact {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Compact Error */
+.export-error-compact {
+  padding: theme("spacing.2") theme("spacing.3");
+  font-size: 0.75rem;
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 15%, transparent);
+  border: 1px solid var(--destructive);
+  border-radius: var(--radius-sm);
+}
+
+.export-preview {
+  @apply flex items-center gap-4;
+  padding: theme("spacing.4");
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.export-thumbnail {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.export-thumbnail-placeholder {
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.export-preview-info {
+  @apply flex flex-col;
+  gap: theme("spacing.2");
+  flex: 1;
+}
+
+.export-preview-size {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.export-preview-format {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.export-preview-warning {
+  font-size: 0.75rem;
+  color: var(--accent-primary);
+  margin-top: theme("spacing.1");
+}
+
+.export-dimensions {
+  @apply flex flex-col;
+  gap: theme("spacing.4");
+}
+
+.export-dimension-inputs {
+  @apply flex items-center gap-3;
+}
+
+.export-dimension-label {
+  @apply flex flex-col;
+  gap: theme("spacing.1");
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.export-dimension-input {
+  padding: theme("spacing.2") theme("spacing.3");
+  font-size: 0.875rem;
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.export-dimension-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.export-dimension-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-dimension-separator {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  margin-top: theme("spacing.6");
+}
+
+.export-presets {
+  @apply flex flex-col;
+  gap: theme("spacing.2");
+}
+
+.export-presets-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.export-presets-grid {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.export-preset-button {
+  padding: theme("spacing.2") theme("spacing.3");
+  font-size: 0.75rem;
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.export-preset-button:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 10%, var(--panel-bg));
+}
+
+.export-preset-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-format-options {
+  @apply flex flex-col;
+  gap: theme("spacing.2");
+}
+
+.export-format-option {
+  @apply flex items-center gap-2;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: theme("spacing.2");
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+
+.export-format-option:hover {
+  background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+.export-format-option input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.export-quality {
+  margin-top: theme("spacing.3");
+}
+
+.export-quality-label {
+  @apply flex flex-col;
+  gap: theme("spacing.2");
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.export-quality-slider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.export-progress {
+  @apply flex flex-col;
+  gap: theme("spacing.2");
+}
+
+.export-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.export-progress-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  transition: width 0.3s ease;
+}
+
+.export-progress-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.export-error {
+  padding: theme("spacing.2");
+  font-size: 0.75rem;
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 15%, transparent);
+  border: 1px solid var(--destructive);
+  border-radius: var(--radius-sm);
+}
+
+.export-file-size {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: theme("spacing.2");
+}
+
+.export-modal-actions {
+  @apply flex gap-3;
+  margin-top: theme("spacing.5");
+  justify-content: flex-end;
 }
 
 .app-footer a {
@@ -2172,3 +2799,4 @@ body:has(.app-layout--wide) .app-footer {
     @apply bg-background text-foreground;
   }
 }
+

@@ -665,6 +665,9 @@ export interface SpriteController {
   applyMinimalGridPreset: () => void;
   reset: () => void;
   destroy: () => void;
+  getP5Instance: () => p5 | null;
+  pauseAnimation: () => void;
+  resumeAnimation: () => void;
 }
 
 export const createSpriteController = (
@@ -720,7 +723,13 @@ export const createSpriteController = (
     let targetSpeedFactor = 1.0; // Target speed factor from slider
 
     p.setup = () => {
-      const size = Math.max(750, container.clientWidth || 750);
+      // Use the same sizing logic as resizeCanvas to ensure consistency
+      // Canvas should match the card's intended size, accounting for padding and border
+      const cardPadding = 40; // 20px each side = 40px total (spacing.5)
+      const cardBorder = 4; // 2px each side = 4px total
+      const containerWidth = container.clientWidth || 750;
+      // Calculate canvas size: container width + padding + border, clamped between min (750px) and max (960px)
+      const size = Math.min(960, Math.max(750, containerWidth + cardPadding + cardBorder));
       canvas = p.createCanvas(size, size);
       canvas.parent(container);
       p.pixelDensity(1);
@@ -745,9 +754,21 @@ export const createSpriteController = (
         // CSS will scale it down to fit the height, making it appear larger
         size = window.innerWidth;
       } else {
-        // Normal mode: use container width, but enforce minimum based on status bar
-        // Status bar needs ~750px to fit all elements (5 badges + 3 buttons) on one row
-        size = Math.max(750, container.clientWidth || 750);
+        // Normal mode: canvas should match the card's intended size, not the container's width
+        // The card has max width of 960px with:
+        //   - border: 2px solid (2px each side = 4px total)
+        //   - padding-inline: spacing.5 (20px each side = 40px total)
+        //   - box-sizing: border-box (border and padding included in width)
+        // The container's clientWidth excludes border and padding, so:
+        //   clientWidth = cardWidth - border - padding = 960 - 4 - 40 = 916px
+        // To get the intended canvas size (960px), we add padding back: 916 + 40 = 956px
+        // But we want 960px, so we need to add border too: 916 + 40 + 4 = 960px
+        // Status bar needs ~750px minimum to fit all elements (5 badges + 3 buttons) on one row
+        const cardPadding = 40; // 20px each side = 40px total (spacing.5)
+        const cardBorder = 4; // 2px each side = 4px total
+        const containerWidth = container.clientWidth || 750;
+        // Calculate canvas size: container width + padding + border, clamped between min (750px) and max (960px)
+        size = Math.min(960, Math.max(750, containerWidth + cardPadding + cardBorder));
       }
       
       p.resizeCanvas(size, size);
@@ -756,6 +777,21 @@ export const createSpriteController = (
     };
 
     p.windowResized = resizeCanvas;
+    
+    // Watch container for size changes (triggers when layout changes cause container to resize)
+    // This ensures canvas resizes even when window doesn't resize but container does
+    if (typeof ResizeObserver !== 'undefined') {
+      const containerResizeObserver = new ResizeObserver(() => {
+        // Small delay to ensure layout has settled
+        setTimeout(() => {
+          resizeCanvas();
+        }, 50);
+      });
+      containerResizeObserver.observe(container);
+      
+      // Store observer for cleanup
+      (container as any)._resizeObserver = containerResizeObserver;
+    }
     
     // Also resize on fullscreen changes
     const handleFullscreenChange = () => {
@@ -1250,8 +1286,31 @@ export const createSpriteController = (
       updateSprite();
     },
     destroy: () => {
+      // Clean up container ResizeObserver if it exists
+      if ((container as any)._resizeObserver) {
+        (container as any)._resizeObserver.disconnect();
+        delete (container as any)._resizeObserver;
+      }
       p5Instance?.remove();
       p5Instance = null;
+    },
+    getP5Instance: () => p5Instance,
+    pauseAnimation: () => {
+      if (p5Instance) {
+        // Redraw once to ensure the canvas has the latest frame before pausing
+        p5Instance.redraw();
+        // Small delay to ensure redraw completes before pausing
+        setTimeout(() => {
+          if (p5Instance) {
+            p5Instance.noLoop();
+          }
+        }, 10);
+      }
+    },
+    resumeAnimation: () => {
+      if (p5Instance) {
+        p5Instance.loop();
+      }
     },
   };
 

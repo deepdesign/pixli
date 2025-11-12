@@ -2003,6 +2003,10 @@ body:has(.app-layout--wide) .app-header {
   box-sizing: border-box;
 }
 
+.footer-text {
+  margin-left: auto;
+}
+
 /* When columns are split, constrain footer to align with right column edge
  * The footer should not extend beyond the layout width
  * Content width: control (348) + gap (24) + display (960) + gap (24) + motion (348) = 1704px

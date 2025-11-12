@@ -1987,28 +1987,13 @@ const App = () => {
       <footer className={`app-footer${isMobile ? ' app-footer--mobile' : ''}`}>
         <div className="footer-brand">
           {!isMobile && <BitlabLogo className="footer-logo" />}
-          <span>
-            © {new Date().getFullYear()} BitLab · Generative Playground ·{" "}
-            <a href="https://jamescutts.me/" target="_blank" rel="noreferrer">
-              jamescutts.me
-            </a>
-          </span>
         </div>
-        {!isMobile && (
-          <span className="footer-links">
-            <a href="https://p5js.org/" target="_blank" rel="noreferrer">
-              p5.js
-            </a>{" "}
-            ·{" "}
-            <a
-              href="https://www.retroui.dev/docs"
-              target="_blank"
-              rel="noreferrer"
-            >
-              RetroUI Docs
-            </a>
-          </span>
-        )}
+        <span className="footer-text">
+          © {new Date().getFullYear()} BitLab · Generative Playground ·{" "}
+          <a href="https://jamescutts.me/" target="_blank" rel="noreferrer">
+            jamescutts.me
+          </a>
+        </span>
       </footer>
 
       {showPresetManager && (

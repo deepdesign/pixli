@@ -47,8 +47,8 @@ export async function exportCanvas(
 ): Promise<string> {
   const { width, height, format, quality = 0.92, scale = 1 } = config;
   
-  // Get the current canvas
-  const currentCanvas = p5Instance.canvas as HTMLCanvasElement;
+  // Get the current canvas (p5.js stores it as a property, but TypeScript types don't include it)
+  const currentCanvas = (p5Instance as any).canvas as HTMLCanvasElement | null;
   if (!currentCanvas) {
     throw new Error("Canvas not found");
   }
@@ -176,6 +176,6 @@ export function createThumbnail(
  * @returns The HTML canvas element, or null if not found
  */
 export function getCanvasFromP5(p5Instance: p5): HTMLCanvasElement | null {
-  return (p5Instance.canvas as HTMLCanvasElement) || null;
+  return ((p5Instance as any).canvas as HTMLCanvasElement) || null;
 }
 

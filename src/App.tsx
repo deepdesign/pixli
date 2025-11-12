@@ -736,11 +736,16 @@ const App = () => {
     }
     
     const p5Instance = controllerRef.current.getP5Instance();
-    if (!p5Instance || !p5Instance.canvas) {
+    if (!p5Instance) {
       return;
     }
     
-    const canvas = p5Instance.canvas as HTMLCanvasElement;
+    // p5.js stores canvas as a property, but TypeScript types don't include it
+    const canvas = (p5Instance as any).canvas as HTMLCanvasElement | null;
+    if (!canvas) {
+      return;
+    }
+    
     setCurrentCanvasSize({
       width: canvas.width,
       height: canvas.height,
@@ -755,12 +760,18 @@ const App = () => {
     }
     
     const p5Instance = controllerRef.current.getP5Instance();
-    if (!p5Instance || !p5Instance.canvas) {
+    if (!p5Instance) {
       setCurrentCanvasSize({ width: 750, height: 750 });
       return;
     }
     
-    const canvas = p5Instance.canvas as HTMLCanvasElement;
+    // p5.js stores canvas as a property, but TypeScript types don't include it
+    const canvas = (p5Instance as any).canvas as HTMLCanvasElement | null;
+    if (!canvas) {
+      setCurrentCanvasSize({ width: 750, height: 750 });
+      return;
+    }
+    
     const container = sketchContainerRef.current;
     
     // Update immediately

@@ -6,11 +6,7 @@ import {
   getRandomPalette,
   palettes,
 } from "./data/palettes";
-import {
-  getGradient,
-  getGradientsForPalette,
-  gradientPresets,
-} from "./data/gradients";
+import { getGradientsForPalette } from "./data/gradients";
 import { calculateGradientLine } from "./lib/gradientUtils";
 
 const MIN_TILE_SCALE = 0.12;
@@ -72,33 +68,7 @@ type PaletteId = (typeof palettes)[number]["id"];
 type BlendModeKey = "NONE" | "MULTIPLY" | "SCREEN" | "HARD_LIGHT" | "OVERLAY" | "SOFT_LIGHT" | "DARKEST" | "LIGHTEST";
 export type BlendModeOption = BlendModeKey;
 
-export type BackgroundMode =
-  | "palette"
-  | "void_deep"
-  | "oceanic_abyss"
-  | "arcade_night"
-  | "sunset_purple"
-  | "aurora_violet"
-  | "neon_cyan"
-  | "pastel_sky"
-  | "flora_blush"
-  | "ember_glow";
-
-const backgroundPresets: Record<BackgroundMode, string | null> = {
-  palette: null,
-  // Dark backgrounds (3) - rich, deep colors from palettes
-  void_deep: "#0f0f1c", // Deepest purple-black from void palette (#0f0f1c)
-  oceanic_abyss: "#031a6b", // Deepest blue from oceanic palette (#031a6b)
-  arcade_night: "#3a0ca3", // Rich purple from arcade palette (#3a0ca3)
-  // Medium backgrounds (3) - vibrant, colorful from palettes
-  sunset_purple: "#ad00ff", // Rich purple from sunset palette (#ad00ff)
-  aurora_violet: "#7b42f6", // Vivid violet from aurora palette (#7b42f6)
-  neon_cyan: "#2b86c5", // Bright cyan-blue from neon palette (#2b86c5)
-  // Light backgrounds (3) - bright, colorful from palettes
-  pastel_sky: "#c4f3ff", // Bright sky blue from pastel palette (#c4f3ff)
-  flora_blush: "#ffafbd", // Warm pink from flora palette (#ffafbd)
-  ember_glow: "#ffd17c", // Warm golden from ember palette (#ffd17c)
-};
+export type BackgroundMode = "auto" | PaletteId;
 
 export type SpriteMode =
   | "rounded"
@@ -147,6 +117,7 @@ interface PreparedSprite {
   background: string;
 }
 
+
 export interface GeneratorState {
   seed: string;
   paletteId: string;
@@ -164,6 +135,7 @@ export interface GeneratorState {
   movementMode: MovementMode;
   backgroundMode: BackgroundMode;
   backgroundHueShift: number;
+  backgroundBrightness: number;
   motionSpeed: number;
   rotationEnabled: boolean;
   rotationAmount: number;
@@ -176,7 +148,7 @@ export interface GeneratorState {
   spriteGradientRandom: boolean;
   spriteGradientDirectionRandom: boolean;
   canvasFillMode: "solid" | "gradient";
-  canvasGradientId: string | null;
+  canvasGradientMode: BackgroundMode; // Same options as backgroundMode
   canvasGradientDirection: number; // 0-360 degrees
 }
 
@@ -218,8 +190,9 @@ export const DEFAULT_STATE: GeneratorState = {
   layerOpacity: 74,
   spriteMode: "star",
   movementMode: "drift",
-  backgroundMode: "palette",
+  backgroundMode: "auto",
   backgroundHueShift: 0,
+  backgroundBrightness: 50,
   motionSpeed: 8.5,
   rotationEnabled: false,
   rotationAmount: 72,
@@ -232,7 +205,7 @@ export const DEFAULT_STATE: GeneratorState = {
   spriteGradientRandom: false,
   spriteGradientDirectionRandom: false,
   canvasFillMode: "solid",
-  canvasGradientId: null,
+  canvasGradientMode: "auto",
   canvasGradientDirection: 0,
 };
 
@@ -337,6 +310,17 @@ const hslToHex = (h: number, s: number, l: number) => {
 const shiftHue = (hex: string, hueShiftDegrees: number) => {
   const [h, s, l] = hexToHsl(hex);
   return hslToHex(h + hueShiftDegrees, s, l);
+};
+
+const applyHueAndBrightness = (
+  hex: string,
+  hueShiftDegrees: number,
+  brightnessPercent: number,
+) => {
+  const [h, s, l] = hexToHsl(hex);
+  const brightnessFactor = clamp(brightnessPercent, 0, 100) / 50;
+  const adjustedLight = clamp(l * brightnessFactor, 0, 100);
+  return hslToHex(h + hueShiftDegrees, s, adjustedLight);
 };
 
 const jitterColor = (hex: string, variance: number, random: () => number) => {
@@ -540,9 +524,11 @@ const computeMovementOffsets = (
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+
 const computeSprite = (state: GeneratorState): PreparedSprite => {
   const rng = createMulberry32(hashSeed(state.seed));
   const palette = getPalette(state.paletteId);
+  const originalPaletteColors = palette.colors;
   // Allow variance up to 1.5 (150% internal value) for more color variation
   const variance = clamp(state.paletteVariance / 100, 0, 1.5);
 
@@ -550,23 +536,22 @@ const computeSprite = (state: GeneratorState): PreparedSprite => {
   const positionRng = createMulberry32(hashSeed(`${state.seed}-position`));
   // Apply global hue shift to palette colors (0-100 maps to 0-360 degrees)
   const hueShiftDegrees = (state.hueShift / 100) * 360;
-  const shiftedPalette = palette.colors.map((color) =>
+  const shiftedPalette = originalPaletteColors.map((color) =>
     shiftHue(color, hueShiftDegrees),
   );
   const chosenPalette = shiftedPalette.map((color) =>
     jitterColor(color, variance, colorRng),
   );
-  const backgroundBase = shiftedPalette[0];
-  const presetBackground = backgroundPresets[state.backgroundMode];
-  // Apply background hue shift to preset backgrounds (0-100 maps to 0-360 degrees)
-  // Don't apply hue shift to palette mode (it uses the shifted palette color)
-  const backgroundHueShiftDegrees = state.backgroundMode !== "palette" 
-    ? (state.backgroundHueShift / 100) * 360 
-    : 0;
-  const background =
-    presetBackground === null
-      ? jitterColor(backgroundBase, variance * 0.5, colorRng)
-      : shiftHue(presetBackground, backgroundHueShiftDegrees);
+  const backgroundPaletteId =
+    state.backgroundMode === "auto" ? state.paletteId : state.backgroundMode;
+  const backgroundPalette = getPalette(backgroundPaletteId);
+  const backgroundBase = backgroundPalette.colors[0] ?? originalPaletteColors[0];
+  const backgroundHueShiftDegrees = (state.backgroundHueShift / 100) * 360;
+  const background = applyHueAndBrightness(
+    backgroundBase,
+    backgroundHueShiftDegrees,
+    state.backgroundBrightness,
+  );
 
   const densityRatio = clamp(state.scalePercent / MAX_DENSITY_PERCENT_UI, 0, 1);
   const baseScaleValue = clamp(state.scaleBase / 100, 0, 1);
@@ -744,13 +729,14 @@ export interface SpriteController {
   usePalette: (paletteId: PaletteId) => void;
   setBackgroundMode: (mode: BackgroundMode) => void;
   setBackgroundHueShift: (value: number) => void;
+  setBackgroundBrightness: (value: number) => void;
   setSpriteFillMode: (mode: "solid" | "gradient") => void;
   setSpriteGradient: (gradientId: string) => void;
   setSpriteGradientDirection: (degrees: number) => void;
   setSpriteGradientRandom: (enabled: boolean) => void;
   setSpriteGradientDirectionRandom: (enabled: boolean) => void;
   setCanvasFillMode: (mode: "solid" | "gradient") => void;
-  setCanvasGradient: (gradientId: string) => void;
+  setCanvasGradientMode: (mode: BackgroundMode) => void;
   setCanvasGradientDirection: (degrees: number) => void;
   applySingleTilePreset: () => void;
   applyNebulaPreset: () => void;
@@ -908,6 +894,9 @@ export const createSpriteController = (
       const offsetY = (p.height - drawSize) / 2;
       const motionScale = clamp(state.motionIntensity / 100, 0, 1.5);
       const deltaMs = typeof p.deltaTime === "number" ? p.deltaTime : 16.666;
+      // Delta time for time-based effects
+      (p as any).deltaMs = deltaMs;
+      const backgroundHueShiftDegrees = (state.backgroundHueShift / 100) * 360;
       const MOTION_SPEED_MAX_INTERNAL = 12.5;
       // Apply mode-specific speed multiplier to normalize perceived speed across modes
       // Higher multiplier = slower animation (divide to slow down)
@@ -932,35 +921,59 @@ export const createSpriteController = (
       
       const ctx = p.drawingContext as CanvasRenderingContext2D;
       ctx.imageSmoothingEnabled = false;
+      const backgroundBrightness = clamp(state.backgroundBrightness, 0, 100);
+      const resolveBackgroundPaletteId = () =>
+        state.backgroundMode === "auto" ? state.paletteId : state.backgroundMode;
+      const applyCanvasAdjustments = (hex: string) =>
+        applyHueAndBrightness(hex, backgroundHueShiftDegrees, backgroundBrightness);
       
       // Handle canvas background (gradient or solid)
       if (state.canvasFillMode === "gradient") {
-        const gradientId = state.canvasGradientId ?? gradientPresets[0].id;
-        const gradientPreset = getGradient(gradientId);
-        if (gradientPreset) {
-          // Calculate gradient line for full canvas
-          const gradientLine = calculateGradientLine(
-            state.canvasGradientDirection,
-            p.width,
-            p.height,
-          );
-          const gradient = ctx.createLinearGradient(
-            gradientLine.x0,
-            gradientLine.y0,
-            gradientLine.x1,
-            gradientLine.y1,
-          );
-          const numColors = gradientPreset.colors.length;
-          gradientPreset.colors.forEach((color, index) => {
-            const stop = numColors > 1 ? index / (numColors - 1) : 0;
-            gradient.addColorStop(stop, color);
-          });
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, p.width, p.height);
-        } else {
-          // Fallback to solid background
-          p.background(prepared.background);
-        }
+        // Calculate gradient line for full canvas
+        const gradientLine = calculateGradientLine(
+          state.canvasGradientDirection,
+          p.width,
+          p.height,
+        );
+        const gradient = ctx.createLinearGradient(
+          gradientLine.x0,
+          gradientLine.y0,
+          gradientLine.x1,
+          gradientLine.y1,
+        );
+
+        const resolveGradientPaletteId = () => {
+          if (state.canvasGradientMode === "auto") {
+            return resolveBackgroundPaletteId();
+          }
+          return state.canvasGradientMode;
+        };
+        const gradientPalette = getPalette(resolveGradientPaletteId());
+        const gradientSourceColors =
+          gradientPalette.colors.length > 0
+            ? gradientPalette.colors.slice(0, 3)
+            : [prepared.background];
+        const gradientColors = gradientSourceColors
+          .map((color) => applyCanvasAdjustments(color))
+          .filter(Boolean);
+
+        const usableGradientColors =
+          gradientColors.length > 1
+            ? gradientColors
+            : gradientColors.length === 1
+            ? [...gradientColors, gradientColors[0]]
+            : [prepared.background, prepared.background];
+
+        usableGradientColors.forEach((color, index) => {
+          const stop =
+            usableGradientColors.length > 1
+              ? index / (usableGradientColors.length - 1)
+              : 0;
+          gradient.addColorStop(stop, color);
+        });
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, p.width, p.height);
       } else {
         // Solid background
         p.background(prepared.background);
@@ -1015,7 +1028,9 @@ export const createSpriteController = (
             
             const baseX = offsetX + normalizedU * drawSize;
             const baseY = offsetY + normalizedV * drawSize;
-            const shapeSize = baseShapeSize * movement.scaleMultiplier;
+            
+            const finalMovement = movement;
+            const shapeSize = baseShapeSize * finalMovement.scaleMultiplier;
             // Use state.layerOpacity directly instead of stored layer.opacity for dynamic updates
             const opacityValue = clamp(state.layerOpacity / 100, 0.12, 1);
             const opacityAlpha = Math.round(opacityValue * 255);
@@ -1026,12 +1041,12 @@ export const createSpriteController = (
             
             // Clamp positions to canvas bounds with overflow allowance
             const clampedX = clamp(
-              baseX + movement.offsetX,
+              baseX + finalMovement.offsetX,
               offsetX + halfSize - allowableOverflow,
               offsetX + drawSize - halfSize + allowableOverflow,
             );
             const clampedY = clamp(
-              baseY + movement.offsetY,
+              baseY + finalMovement.offsetY,
               offsetY + halfSize - allowableOverflow,
               offsetY + drawSize - halfSize + allowableOverflow,
             );
@@ -1358,8 +1373,8 @@ export const createSpriteController = (
           }
         });
 
-        p.pop();
-      });
+      p.pop();
+    });
 
       if (p.frameCount % 24 === 0) {
         options.onFrameRate?.(Math.round(p.frameRate()));
@@ -1408,8 +1423,9 @@ export const createSpriteController = (
       state.motionIntensity = randomInt(42, 98);
       state.movementMode =
         movementModes[Math.floor(Math.random() * movementModes.length)];
-      state.backgroundMode = "palette";
+      state.backgroundMode = "auto";
       state.backgroundHueShift = 0;
+      state.backgroundBrightness = 50;
       
       // Preserve rotation settings: if both are off, keep off; if either is on, keep on
       if (!preserveRotationEnabled && !preserveRotationAnimated) {
@@ -1573,7 +1589,9 @@ export const createSpriteController = (
       }
     },
     setBackgroundMode: (mode: BackgroundMode) => {
-      if (!(mode in backgroundPresets)) {
+      const isValid =
+        mode === "auto" || palettes.some((palette) => palette.id === mode);
+      if (!isValid) {
         return;
       }
       applyState({ backgroundMode: mode });
@@ -1582,6 +1600,9 @@ export const createSpriteController = (
       // Background hue shift affects background color, so regeneration is needed
       // Background hue shift is stored as 0-100 (maps to 0-360 degrees)
       applyState({ backgroundHueShift: clamp(value, 0, 100) });
+    },
+    setBackgroundBrightness: (value: number) => {
+      applyState({ backgroundBrightness: clamp(value, 0, 100) });
     },
     setSpriteFillMode: (mode: "solid" | "gradient") => {
       // Fill mode is applied during rendering, no regeneration needed
@@ -1604,12 +1625,21 @@ export const createSpriteController = (
       applyState({ spriteGradientDirectionRandom: enabled });
     },
     setCanvasFillMode: (mode: "solid" | "gradient") => {
+      const updates: Partial<GeneratorState> = { canvasFillMode: mode };
+      if (mode === "gradient") {
+        updates.canvasGradientMode = "auto";
+      }
       // Canvas fill mode is applied in render, no regeneration needed
-      applyState({ canvasFillMode: mode }, { recompute: false });
+      applyState(updates, { recompute: false });
     },
-    setCanvasGradient: (gradientId: string) => {
-      // Canvas gradient is applied in render, no regeneration needed
-      applyState({ canvasGradientId: gradientId }, { recompute: false });
+    setCanvasGradientMode: (mode: BackgroundMode) => {
+      const isValid =
+        mode === "auto" || palettes.some((palette) => palette.id === mode);
+      if (!isValid) {
+        return;
+      }
+      // Canvas gradient mode is applied in render, no regeneration needed
+      applyState({ canvasGradientMode: mode }, { recompute: false });
     },
     setCanvasGradientDirection: (degrees: number) => {
       // Canvas gradient direction is applied in render, no regeneration needed

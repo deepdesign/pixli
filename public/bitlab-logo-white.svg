@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 45">
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 330 45">
+  <!-- Generator: Adobe Illustrator 29.8.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 2)  -->
   <defs>
     <style>
-      .cls-1 {
+      .st0 {
         fill: #fff;
       }
     </style>
   </defs>
-  <g id="Layer_1-2" data-name="Layer 1">
-    <g>
-      <path class="cls-1" d="M52.5,7.5h-7.5V0h7.5v7.5h7.5v30h-7.5v7.5H0v-7.5h45v-7.5h7.5v-7.5h-7.5v-7.5h7.5v-7.5ZM22.5,15v-7.5h7.5v7.5h-7.5ZM22.5,30v-7.5h7.5v7.5h-7.5Z"/>
-      <path class="cls-1" d="M90,45h-30v-7.5h22.5V0h7.5v45Z"/>
-      <path class="cls-1" d="M90,7.5h15v7.5h-15v-7.5ZM135,30h-7.5V7.5h15V0h7.5v15h-15v15h7.5v15h-45v-7.5h37.5v-7.5Z"/>
-      <path class="cls-1" d="M210,45h-60v-7.5h52.5v-7.5h7.5v15ZM172.5,30V0h7.5v30h-7.5Z"/>
-      <path class="cls-1" d="M262.5,7.5h-7.5V0h7.5v7.5h7.5v37.5h-60v-7.5h22.5v-7.5h7.5v7.5h22.5V7.5ZM232.5,22.5V7.5h7.5v15h-7.5Z"/>
-      <path class="cls-1" d="M322.5,7.5h-7.5V0h7.5v7.5h7.5v30h-7.5v7.5h-52.5v-7.5h45v-7.5h7.5v-7.5h-7.5v-7.5h7.5v-7.5ZM292.5,15v-7.5h7.5v7.5h-7.5ZM292.5,30v-7.5h7.5v7.5h-7.5Z"/>
-    </g>
-  </g>
+  <rect class="st0" x="22.5" y="22.5" width="7.5" height="7.5"/>
+  <rect class="st0" x="45" width="7.5" height="7.5"/>
+  <polygon class="st0" points="52.5 7.5 52.5 15 45 15 45 22.5 52.5 22.5 52.5 30 45 30 45 37.5 0 37.5 0 45 52.5 45 52.5 37.5 60 37.5 60 7.5 52.5 7.5"/>
+  <rect class="st0" x="22.5" y="7.5" width="7.5" height="7.5"/>
+  <polygon class="st0" points="105 15 105 7.5 90 7.5 90 0 82.5 0 82.5 37.5 60 37.5 60 45 90 45 90 15 105 15"/>
+  <polygon class="st0" points="135 37.5 97.5 37.5 97.5 45 142.5 45 142.5 30 135 30 135 37.5"/>
+  <polygon class="st0" points="150 15 150 0 142.5 0 142.5 7.5 127.5 7.5 127.5 30 135 30 135 15 150 15"/>
+  <rect class="st0" x="172.5" width="7.5" height="30"/>
+  <rect class="st0" x="255" width="7.5" height="7.5"/>
+  <rect class="st0" x="232.5" y="7.5" width="7.5" height="15"/>
+  <rect class="st0" x="292.5" y="22.5" width="7.5" height="7.5"/>
+  <rect class="st0" x="292.5" y="7.5" width="7.5" height="7.5"/>
+  <rect class="st0" x="315" width="7.5" height="7.5"/>
+  <polygon class="st0" points="322.5 7.5 322.5 15 315 15 315 22.5 322.5 22.5 322.5 30 315 30 315 37.5 270 37.5 270 7.5 262.5 7.5 262.5 37.5 240 37.5 240 30 232.5 30 232.5 37.5 210 37.5 210 30 202.5 30 202.5 37.5 150 37.5 150 45 209 45 210 45 269 45 270 45 322.5 45 322.5 37.5 330 37.5 330 7.5 322.5 7.5"/>
 </svg>

@@ -43,7 +43,6 @@ import { MobileMenu } from "./components/MobileMenu";
 import { Badge } from "./components/retroui/Badge";
 import { Moon, Monitor, Sun, Maximize2, X, RefreshCw, Bookmark, Camera, HelpCircle, Lock, Unlock } from "lucide-react";
 import { palettes } from "./data/palettes";
-import { gradientPresets } from "./data/gradients";
 import { shouldSplitColumns, getAppMainPadding } from "./lib/responsiveLayout";
 import { useIsMobile } from "./hooks/useIsMobile";
 const BLEND_MODES: BlendModeOption[] = [
@@ -56,22 +55,6 @@ const BLEND_MODES: BlendModeOption[] = [
   "DARKEST",
   "LIGHTEST",
 ];
-const BACKGROUND_OPTIONS = [
-  { value: "palette", label: "Palette (auto)" },
-  // Dark backgrounds
-  { value: "void_deep", label: "Void Deep" },
-  { value: "oceanic_abyss", label: "Oceanic Abyss" },
-  { value: "arcade_night", label: "Arcade Night" },
-  // Medium backgrounds
-  { value: "sunset_purple", label: "Sunset Purple" },
-  { value: "aurora_violet", label: "Aurora Violet" },
-  { value: "neon_cyan", label: "Neon Cyan" },
-  // Light backgrounds
-  { value: "pastel_sky", label: "Pastel Sky" },
-  { value: "flora_blush", label: "Flora Blush" },
-  { value: "ember_glow", label: "Ember Glow" },
-] as const;
-
 type ThemeMode = "system" | "light" | "dark";
 type ThemeColor = "amber" | "mint" | "violet" | "ember" | "lagoon" | "rose";
 
@@ -218,6 +201,11 @@ const PALETTE_OPTIONS = palettes.map((palette) => ({
   value: palette.id,
   label: palette.name,
 }));
+
+const CANVAS_PALETTE_OPTIONS = [
+  { value: "auto", label: "Palette (auto)" },
+  ...PALETTE_OPTIONS,
+];
 
 const MOVEMENT_MODES: Array<{ value: MovementMode; label: string }> = [
   { value: "pulse", label: "Pulse" },
@@ -666,7 +654,6 @@ const App = () => {
     getStoredThemeShape(),
   );
   const [controlTabIndex, setControlTabIndex] = useState(0);
-  const [motionTabIndex, setMotionTabIndex] = useState(0);
   const [showPresetManager, setShowPresetManager] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1344,7 +1331,14 @@ const App = () => {
           <hr className="section-divider" />
           <h3 className="section-title">Rotation</h3>
           <div className="control-field control-field--rotation">
-            <div className="field-heading">
+            <div className="switch-row" style={{ gap: "0.75rem" }}>
+              <Switch
+                id="rotation-toggle"
+                checked={spriteState.rotationEnabled}
+                onCheckedChange={handleRotationToggle}
+                disabled={!ready}
+                aria-labelledby="rotation-toggle-label"
+              />
               <div className="field-heading-left">
                 <span className="field-label" id="rotation-toggle-label">
                   Allow Rotation Offsets
@@ -1355,15 +1349,6 @@ const App = () => {
                   label="Allow Rotation Offsets"
                 />
               </div>
-            </div>
-            <div className="switch-row">
-              <Switch
-                id="rotation-toggle"
-                checked={spriteState.rotationEnabled}
-                onCheckedChange={handleRotationToggle}
-                disabled={!ready}
-                aria-labelledby="rotation-toggle-label"
-              />
             </div>
           </div>
           {spriteState.rotationEnabled && (
@@ -1395,7 +1380,6 @@ const App = () => {
       <>
         <div className="section">
           {showHeading && <h3 className="section-title">Motion</h3>}
-          <h3 className="section-title">Animation</h3>
           <ControlSelect
             id="movement-mode"
             label="Movement"
@@ -1426,7 +1410,7 @@ const App = () => {
           />
           <ControlSlider
             id="motion-speed"
-            label="Animation Speed"
+            label="Motion Speed"
             min={0}
             max={100}
             value={speedToUi(spriteState.motionSpeed)}
@@ -1441,7 +1425,14 @@ const App = () => {
           <hr className="section-divider" />
           <h3 className="section-title">Rotation</h3>
           <div className="control-field control-field--rotation">
-            <div className="field-heading">
+            <div className="switch-row" style={{ gap: "0.75rem" }}>
+              <Switch
+                id="rotation-animate"
+                checked={spriteState.rotationAnimated}
+                onCheckedChange={handleRotationAnimatedToggle}
+                disabled={!ready}
+                aria-labelledby="rotation-animate-label"
+              />
               <div className="field-heading-left">
                 <span className="field-label" id="rotation-animate-label">
                   Animate Rotation
@@ -1452,15 +1443,6 @@ const App = () => {
                   label="Animate Rotation"
                 />
               </div>
-            </div>
-            <div className="switch-row">
-              <Switch
-                id="rotation-animate"
-                checked={spriteState.rotationAnimated}
-                onCheckedChange={handleRotationAnimatedToggle}
-                disabled={!ready}
-                aria-labelledby="rotation-animate-label"
-              />
             </div>
           </div>
           {spriteState.rotationAnimated && (
@@ -1482,6 +1464,7 @@ const App = () => {
       </>
     );
   };
+
 
   const renderFxControls = () => {
     if (!spriteState) {
@@ -1508,7 +1491,14 @@ const App = () => {
             onLockToggle={() => setLockedSpritePalette(!lockedSpritePalette)}
           />
           <div className="control-field">
-            <div className="field-heading">
+            <div className="switch-row" style={{ gap: "0.75rem" }}>
+              <Switch
+                checked={spriteState.spriteFillMode === "gradient"}
+                onCheckedChange={(checked) =>
+                  controllerRef.current?.setSpriteFillMode(checked ? "gradient" : "solid")
+                }
+                disabled={!ready}
+              />
               <div className="field-heading-left">
                 <span className="field-label">Use gradients</span>
                 <TooltipIcon
@@ -1518,13 +1508,6 @@ const App = () => {
                 />
               </div>
             </div>
-            <Switch
-              checked={spriteState.spriteFillMode === "gradient"}
-              onCheckedChange={(checked) =>
-                controllerRef.current?.setSpriteFillMode(checked ? "gradient" : "solid")
-              }
-              disabled={!ready}
-            />
           </div>
           <ControlSlider
             id="palette-range"
@@ -1557,26 +1540,9 @@ const App = () => {
         <div className="section" style={{ marginTop: '2rem' }}>
           <hr className="section-divider" />
           <h3 className="section-title">CANVAS</h3>
-          <div className="control-field">
-            <div className="field-heading">
-              <div className="field-heading-left">
-                <span className="field-label">Use gradients</span>
-                <TooltipIcon
-                  id="canvas-fill-mode-tip"
-                  text="Enable gradient fills for canvas background instead of solid color."
-                  label="Use gradients"
-                />
-              </div>
-            </div>
-            <Switch
-              checked={spriteState.canvasFillMode === "gradient"}
-              onCheckedChange={(checked) =>
-                controllerRef.current?.setCanvasFillMode(checked ? "gradient" : "solid")
-              }
-              disabled={!ready}
-            />
-          </div>
-          {spriteState.canvasFillMode === "solid" && (
+          {(() => {
+            const isCanvasGradient = spriteState.canvasFillMode === "gradient";
+            return !isCanvasGradient ? (
             <>
               <ControlSelect
                 id="background-mode"
@@ -1584,19 +1550,35 @@ const App = () => {
                 value={spriteState.backgroundMode}
                 onChange={handleBackgroundSelect}
                 disabled={!ready}
-                options={BACKGROUND_OPTIONS.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))}
+                options={CANVAS_PALETTE_OPTIONS}
                 tooltip="Choose the colour applied behind the canvas."
                 currentLabel={
-                  BACKGROUND_OPTIONS.find(
+                  CANVAS_PALETTE_OPTIONS.find(
                     (option) => option.value === spriteState.backgroundMode,
                   )?.label
                 }
                 locked={lockedCanvasPalette}
                 onLockToggle={() => setLockedCanvasPalette(!lockedCanvasPalette)}
               />
+              <div className="control-field">
+                <div className="switch-row" style={{ gap: "0.75rem" }}>
+                  <Switch
+                    checked={isCanvasGradient}
+                    onCheckedChange={(checked) =>
+                      controllerRef.current?.setCanvasFillMode(checked ? "gradient" : "solid")
+                    }
+                    disabled={!ready}
+                  />
+                  <div className="field-heading-left">
+                    <span className="field-label">Use gradients</span>
+                    <TooltipIcon
+                      id="canvas-fill-mode-tip"
+                      text="Enable gradient fills for canvas background instead of solid color."
+                      label="Use gradients"
+                    />
+                  </div>
+                </div>
+              </div>
               <ControlSlider
                 id="background-hue-shift"
                 label="Canvas hue shift"
@@ -1607,47 +1589,93 @@ const App = () => {
                 onChange={(value) =>
                   controllerRef.current?.setBackgroundHueShift(value)
                 }
-                disabled={!ready || spriteState.backgroundMode === "palette"}
-                tooltip="Shifts the background color around the color wheel (0-360°). Only applies to preset backgrounds, not Palette (auto)."
+                disabled={!ready}
+                tooltip="Shifts the canvas colors around the color wheel (0-360°)."
+              />
+              <ControlSlider
+                id="background-brightness"
+                label="Canvas brightness"
+                min={0}
+                max={100}
+                value={Math.round(spriteState.backgroundBrightness ?? 50)}
+                displayValue={`${Math.round(spriteState.backgroundBrightness ?? 50)}%`}
+                onChange={(value) =>
+                  controllerRef.current?.setBackgroundBrightness(value)
+                }
+                disabled={!ready}
+                tooltip="Adjusts the canvas brightness (0% = darkest, 100% = brightest)."
               />
             </>
-          )}
-          {spriteState.canvasFillMode === "gradient" && (
+            ) : (
             <>
               <ControlSelect
                 id="canvas-gradient"
-                label="Canvas gradient"
-                value={spriteState.canvasGradientId ?? gradientPresets[0].id}
+                label="Canvas"
+                value={spriteState.backgroundMode}
+                onChange={(value) => {
+                  controllerRef.current?.setBackgroundMode(value as BackgroundMode);
+                  // Also update gradient mode to stay in sync
+                  controllerRef.current?.setCanvasGradientMode(value as BackgroundMode);
+                }}
+                disabled={!ready}
+                options={CANVAS_PALETTE_OPTIONS}
+                tooltip="Choose the theme for the canvas gradient background (same options as solid mode)."
+                currentLabel={
+                  CANVAS_PALETTE_OPTIONS.find(
+                    (option) => option.value === spriteState.backgroundMode,
+                  )?.label ?? CANVAS_PALETTE_OPTIONS[0].label
+                }
+                locked={lockedCanvasPalette}
+                onLockToggle={() => setLockedCanvasPalette(!lockedCanvasPalette)}
+              />
+              <div className="control-field">
+                <div className="switch-row" style={{ gap: "0.75rem" }}>
+                  <Switch
+                    checked={isCanvasGradient}
+                    onCheckedChange={(checked) =>
+                      controllerRef.current?.setCanvasFillMode(checked ? "gradient" : "solid")
+                    }
+                    disabled={!ready}
+                  />
+                  <div className="field-heading-left">
+                    <span className="field-label">Use gradients</span>
+                    <TooltipIcon
+                      id="canvas-fill-mode-tip"
+                      text="Enable gradient fills for canvas background instead of solid color."
+                      label="Use gradients"
+                    />
+                  </div>
+                </div>
+              </div>
+              <ControlSlider
+                id="background-hue-shift"
+                label="Canvas hue shift"
+                min={0}
+                max={100}
+                value={Math.round(spriteState.backgroundHueShift ?? 0)}
+                displayValue={`${Math.round(spriteState.backgroundHueShift ?? 0)}%`}
                 onChange={(value) =>
-                  controllerRef.current?.setCanvasGradient(value)
+                  controllerRef.current?.setBackgroundHueShift(value)
                 }
                 disabled={!ready}
-                options={gradientPresets.map((gradient) => ({
-                  value: gradient.id,
-                  label: gradient.name,
-                }))}
-                tooltip="Select gradient preset for canvas background."
-                currentLabel={
-                  gradientPresets.find(
-                    (g) => g.id === spriteState.canvasGradientId,
-                  )?.name ?? gradientPresets[0].name
-                }
+                tooltip="Shifts the canvas colors around the color wheel (0-360°)."
               />
               <ControlSlider
-                id="canvas-gradient-direction"
-                label="Canvas gradient direction"
+                id="background-brightness"
+                label="Canvas brightness"
                 min={0}
-                max={360}
-                value={Math.round(spriteState.canvasGradientDirection ?? 0)}
-                displayValue={`${Math.round(spriteState.canvasGradientDirection ?? 0)}°`}
+                max={100}
+                value={Math.round(spriteState.backgroundBrightness ?? 50)}
+                displayValue={`${Math.round(spriteState.backgroundBrightness ?? 50)}%`}
                 onChange={(value) =>
-                  controllerRef.current?.setCanvasGradientDirection(value)
+                  controllerRef.current?.setBackgroundBrightness(value)
                 }
                 disabled={!ready}
-                tooltip="Angle of canvas gradient direction (0° = horizontal, 90° = vertical)."
+                tooltip="Adjusts the canvas brightness (0% = darkest, 100% = brightest)."
               />
             </>
-          )}
+            );
+          })()}
         </div>
 
         <div className="section" style={{ marginTop: '2rem' }}>
@@ -1682,7 +1710,26 @@ const App = () => {
             onLockToggle={() => setLockedBlendMode(!lockedBlendMode)}
           />
           <div className="control-field control-field--spaced">
-            <div className="field-heading">
+            <div className="switch-row" style={{ gap: "0.75rem" }}>
+              <Switch
+                id="blend-auto"
+                checked={spriteState.blendModeAuto}
+                onCheckedChange={handleBlendAutoToggle}
+                aria-labelledby={blendAutoLabelId}
+                disabled={!ready}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => controllerRef.current?.randomizeBlendMode()}
+                disabled={!ready || !spriteState.blendModeAuto}
+                aria-label="Randomise sprite blend modes"
+                title="Randomise sprite blend modes"
+                className="blend-random-button"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
               <div className="field-heading-left">
                 <span className="field-label" id={blendAutoLabelId}>
                   Random sprite blend
@@ -1694,32 +1741,12 @@ const App = () => {
                 />
               </div>
             </div>
-            <div className="switch-row" style={{ gap: "0.75rem" }}>
-              <Switch
-                id="blend-auto"
-                checked={spriteState.blendModeAuto}
-                onCheckedChange={handleBlendAutoToggle}
-                aria-labelledby={blendAutoLabelId}
-                disabled={!ready}
-              />
-              <Button
-                type="button"
-                size="md"
-                variant="outline"
-                onClick={() => controllerRef.current?.randomizeBlendMode()}
-                disabled={!ready || !spriteState.blendModeAuto}
-                aria-label="Randomise sprite blend modes"
-                title="Randomise sprite blend modes"
-                className="blend-random-button"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </>
     );
   };
+
 
   const handleLoadPreset = useCallback(
     (state: GeneratorState) => {
@@ -1727,6 +1754,7 @@ const App = () => {
     },
     [],
   );
+
 
 
   const renderStatusBar = () => {
@@ -2025,26 +2053,11 @@ const App = () => {
                       <TabsTrigger>Sprites</TabsTrigger>
                       <TabsTrigger>Colours</TabsTrigger>
                       <TabsTrigger>Motion</TabsTrigger>
-                      <TabsTrigger>FX</TabsTrigger>
                     </TabsTriggerList>
                     <TabsPanels>
                       <TabsContent>{renderSpriteControls()}</TabsContent>
                       <TabsContent>{renderFxControls()}</TabsContent>
-                      <TabsContent>{renderMotionControls(false)}</TabsContent>
-                      <TabsContent>
-                        <div className="section">
-                          <h3 className="section-title">FX Effects</h3>
-                          <p style={{ 
-                            color: 'var(--text-muted)', 
-                            fontSize: '0.75rem', 
-                            lineHeight: '1.6',
-                            marginTop: '1rem'
-                          }}>
-                            Advanced effects and post-processing controls coming soon. 
-                            Stay tuned for filters, distortions, color grading, and more creative tools.
-                          </p>
-                        </div>
-                      </TabsContent>
+                      <TabsContent>{renderMotionControls(true)}</TabsContent>
                     </TabsPanels>
                   </Tabs>
                 </Card>
@@ -2065,7 +2078,6 @@ const App = () => {
                       {!isWideLayout && (
                         <>
                           <TabsTrigger>Motion</TabsTrigger>
-                          <TabsTrigger>FX</TabsTrigger>
                         </>
                       )}
                     </TabsTriggerList>
@@ -2074,21 +2086,7 @@ const App = () => {
                       <TabsContent>{renderFxControls()}</TabsContent>
                       {!isWideLayout && (
                         <>
-                          <TabsContent>{renderMotionControls(false)}</TabsContent>
-                          <TabsContent>
-                            <div className="section">
-                              <h3 className="section-title">FX Effects</h3>
-                              <p style={{ 
-                                color: 'var(--text-muted)', 
-                                fontSize: '0.75rem', 
-                                lineHeight: '1.6',
-                                marginTop: '1rem'
-                              }}>
-                                Advanced effects and post-processing controls coming soon. 
-                                Stay tuned for filters, distortions, color grading, and more creative tools.
-                              </p>
-                            </div>
-                          </TabsContent>
+                          <TabsContent>{renderMotionControls(true)}</TabsContent>
                         </>
                       )}
                     </TabsPanels>
@@ -2102,34 +2100,7 @@ const App = () => {
 
               {isWideLayout && (
                 <aside className="motion-column">
-                  <Card className="panel">
-                    <Tabs
-                      selectedIndex={motionTabIndex}
-                      onChange={setMotionTabIndex}
-                    >
-                      <TabsTriggerList className="retro-tabs">
-                        <TabsTrigger>Motion</TabsTrigger>
-                        <TabsTrigger>FX</TabsTrigger>
-                      </TabsTriggerList>
-                      <TabsPanels>
-                        <TabsContent>{renderMotionControls(false)}</TabsContent>
-                        <TabsContent>
-                          <div className="section">
-                            <h3 className="section-title">FX Effects</h3>
-                            <p style={{ 
-                              color: 'var(--text-muted)', 
-                              fontSize: '0.75rem', 
-                              lineHeight: '1.6',
-                              marginTop: '1rem'
-                            }}>
-                              Advanced effects and post-processing controls coming soon. 
-                              Stay tuned for filters, distortions, color grading, and more creative tools.
-                            </p>
-                          </div>
-                        </TabsContent>
-                      </TabsPanels>
-                    </Tabs>
-                  </Card>
+                  <Card className="panel">{renderMotionControls(true)}</Card>
                 </aside>
               )}
             </>

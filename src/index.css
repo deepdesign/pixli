@@ -134,8 +134,8 @@
    *   CONTROL_COLUMN_WIDTH_MERGED = 420
    *   CONTROL_COLUMN_WIDTH_SPLIT = 348
    */
-  --control-column-width: 420px;
-  --control-column-width-narrow: 348px;
+  --control-column-width: 344px;
+  --control-column-width-narrow: 280px;
   --layout-max-width-split: calc(var(--control-column-width-narrow) + 24px + 960px + 24px + var(--control-column-width-narrow));
   --layout-max-width-split-with-padding: calc(var(--layout-max-width-split) + 48px);
 
@@ -701,6 +701,7 @@ body:has(.app-layout--wide) .app-header {
   @apply flex items-center justify-end;
   gap: theme("spacing.3");
   flex: 1 1 auto;
+  margin-bottom: calc(-2 * theme("spacing.2") - 4px);
 }
 
 .app-logo-button {
@@ -1159,8 +1160,8 @@ body:has(.app-layout--wide) .app-header {
 }
 
 .app-layout--studio .motion-column {
-  flex: 0 0 360px;
-  width: 360px;
+  flex: 0 0 var(--control-column-width-narrow);
+  width: var(--control-column-width-narrow);
 }
 
 /* Display Column (Canvas Container)

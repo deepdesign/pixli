@@ -8,10 +8,8 @@ import {
 } from "./data/palettes";
 import {
   getGradient,
-  getRandomGradient,
   getGradientsForPalette,
   gradientPresets,
-  type GradientPreset,
 } from "./data/gradients";
 import { calculateGradientLine } from "./lib/gradientUtils";
 

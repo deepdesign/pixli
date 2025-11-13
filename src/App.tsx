@@ -1781,7 +1781,7 @@ const App = () => {
                   Palette · {statusPalette}
                 </Badge>
                 <Badge variant="surface" size="sm">
-                  Sprites · {statusMode}
+                  Sprite · {statusMode}
                 </Badge>
                 <Badge variant="surface" size="sm">
                   Blend · {statusBlend}
@@ -1801,7 +1801,7 @@ const App = () => {
               Palette · {statusPalette}
             </Badge>
             <Badge variant="surface" size="sm">
-              Mode · {statusMode}
+              Sprite · {statusMode}
             </Badge>
             <Badge variant="surface" size="sm">
               Blend · {statusBlend}

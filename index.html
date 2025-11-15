@@ -18,12 +18,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
     />
     <title>BitLab</title>
     <style>
       :root {
         color-scheme: dark;
+        --text-subtle: rgba(198, 201, 255, 0.45);
       }
 
       body {
@@ -61,9 +62,10 @@
       }
 
       .initial-loader-text {
-        font-family: "Press Start 2P", monospace;
+        font-family: "Space Grotesk", system-ui, sans-serif;
         font-size: 0.58rem;
-        color: rgba(255, 255, 255, 0.7);
+        font-weight: 400;
+        color: var(--text-subtle, rgba(198, 201, 255, 0.45));
         text-transform: uppercase;
         letter-spacing: 0.24em;
         text-align: center;

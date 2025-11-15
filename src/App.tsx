@@ -16,6 +16,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectValue,
 } from "@/components/retroui/Select";
 import { Slider } from "@/components/retroui/Slider";
@@ -144,6 +145,11 @@ const SPRITE_MODES: Array<{
     label: "Cross",
     description: "Bold plus signs that anchor grid compositions",
   },
+  {
+    value: "pixels",
+    label: "Pixels",
+    description: "3x3 grid of squares with spacing for pixelated patterns",
+  },
 ];
 
 const TILE_DENSITY_MIN = 50;
@@ -197,10 +203,71 @@ const uiToSpeed = (value: number) => {
   return Math.round((bounded / 100) * MOTION_SPEED_MAX);
 };
 
-const PALETTE_OPTIONS = palettes.map((palette) => ({
-  value: palette.id,
-  label: palette.name,
-}));
+// Organize palettes by category, then alphabetically within each category
+// Returns grouped options with category labels and color previews
+const PALETTE_OPTIONS = (() => {
+  const categoryOrder = [
+    "Neon/Cyber",
+    "Warm/Fire",
+    "Cool/Ocean",
+    "Nature",
+    "Soft/Pastel",
+    "Dark/Mysterious",
+  ];
+  
+  // Group palettes by category
+  const byCategory = new Map<string, typeof palettes>();
+  for (const palette of palettes) {
+    const category = palette.category || "Other";
+    if (!byCategory.has(category)) {
+      byCategory.set(category, []);
+    }
+    byCategory.get(category)!.push(palette);
+  }
+  
+  // Sort within each category alphabetically by name
+  for (const palettes of byCategory.values()) {
+    palettes.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  // Create grouped structure with category labels
+  const result: Array<{ 
+    value: string; 
+    label: string; 
+    category?: string; 
+    colors?: string[];
+  }> = [];
+  
+  for (const category of categoryOrder) {
+    const categoryPalettes = byCategory.get(category);
+    if (categoryPalettes) {
+      for (const palette of categoryPalettes) {
+        result.push({ 
+          value: palette.id, 
+          label: palette.name,
+          category: category,
+          colors: palette.colors,
+        });
+      }
+    }
+  }
+  
+  // Add any uncategorized palettes at the end
+  for (const [category, categoryPalettes] of byCategory.entries()) {
+    if (!categoryOrder.includes(category)) {
+      for (const palette of categoryPalettes) {
+        result.push({ 
+          value: palette.id, 
+          label: palette.name,
+          category: category,
+          colors: palette.colors,
+        });
+      }
+    }
+  }
+  
+  return result;
+})();
 
 const CANVAS_PALETTE_OPTIONS = [
   { value: "auto", label: "Palette (auto)" },
@@ -364,7 +431,7 @@ const ControlSelect = ({
 }: {
   id: string;
   label: string;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; category?: string; colors?: string[] }>;
   value: string | null;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -382,6 +449,44 @@ const ControlSelect = ({
     options.find((option) => option.value === value)?.label ??
     placeholder ??
     "Select";
+
+  // Separate options with and without categories
+  const optionsWithCategories = options.filter(opt => opt.category);
+  const optionsWithoutCategories = options.filter(opt => !opt.category);
+  const hasCategories = optionsWithCategories.length > 0;
+  
+  const groupedOptions = hasCategories ? (() => {
+    const categoryOrder = [
+      "Neon/Cyber",
+      "Warm/Fire",
+      "Cool/Ocean",
+      "Nature",
+      "Soft/Pastel",
+      "Dark/Mysterious",
+    ];
+    const groups = new Map<string, typeof options>();
+    for (const option of optionsWithCategories) {
+      const category = option.category || "Other";
+      if (!groups.has(category)) {
+        groups.set(category, []);
+      }
+      groups.get(category)!.push(option);
+    }
+    // Return ordered array of [category, options] pairs
+    const ordered: Array<[string, typeof options]> = [];
+    for (const category of categoryOrder) {
+      if (groups.has(category)) {
+        ordered.push([category, groups.get(category)!]);
+      }
+    }
+    // Add any uncategorized groups
+    for (const [category, categoryOptions] of groups.entries()) {
+      if (!categoryOrder.includes(category)) {
+        ordered.push([category, categoryOptions]);
+      }
+    }
+    return ordered;
+  })() : null;
 
   return (
     <div className="control-field">
@@ -411,7 +516,8 @@ const ControlSelect = ({
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {options.map((option) => (
+              {/* Render options without categories first (e.g., "auto" option) */}
+              {optionsWithoutCategories.map((option) => (
                 <SelectItem
                   key={option.value}
                   value={option.value}
@@ -433,6 +539,76 @@ const ControlSelect = ({
                 </SelectItem>
               ))}
             </SelectGroup>
+            {hasCategories && groupedOptions ? (
+              // Render with category groups
+              groupedOptions.map(([category, categoryOptions]) => (
+                <SelectGroup key={category}>
+                  <SelectLabel className="control-select-category-label">
+                    {category}
+                  </SelectLabel>
+                  {categoryOptions.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      onSelect={
+                        onItemSelect ? () => onItemSelect(option.value) : undefined
+                      }
+                      onPointerDown={
+                        onItemPointerDown
+                          ? (event) => {
+                              if (event.pointerType === "mouse" && event.button !== 0) {
+                                return;
+                              }
+                              onItemPointerDown(option.value);
+                            }
+                          : undefined
+                      }
+                      className={option.colors ? "control-dropdown-item-with-preview" : undefined}
+                    >
+                      {option.colors && (
+                        <span className="control-select-color-preview">
+                          {option.colors.map((color, idx) => (
+                            <span
+                              key={idx}
+                              className="control-select-color-square"
+                              style={{ backgroundColor: color }}
+                              aria-hidden="true"
+                            />
+                          ))}
+                        </span>
+                      )}
+                      <span className="control-select-item-label">{option.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))
+            ) : null}
+            {/* Fallback: render without categories if no categories exist */}
+            {!hasCategories && optionsWithoutCategories.length === 0 && (
+              <SelectGroup>
+                {options.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={
+                      onItemSelect ? () => onItemSelect(option.value) : undefined
+                    }
+                    onPointerDown={
+                      onItemPointerDown
+                        ? (event) => {
+                            if (event.pointerType === "mouse" && event.button !== 0) {
+                              return;
+                            }
+                            onItemPointerDown(option.value);
+                          }
+                        : undefined
+                    }
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         {onLockToggle && (
@@ -573,6 +749,28 @@ const ShapeIcon = ({ shape, size = 24 }: { shape: SpriteMode; size?: number }) =
             <rect x={center - 10} y={center - 3} width={20} height={6} />
           </g>
         );
+
+      case "pixels": {
+        // 3x3 grid of squares with spacing
+        const gridSize = 3;
+        const squareSize = 4;
+        const gap = 1;
+        const totalSize = gridSize * squareSize + (gridSize - 1) * gap;
+        const startX = center - totalSize / 2;
+        const startY = center - totalSize / 2;
+        
+        return (
+          <g fill="currentColor">
+            {Array.from({ length: gridSize * gridSize }, (_, i) => {
+              const row = Math.floor(i / gridSize);
+              const col = i % gridSize;
+              const x = startX + col * (squareSize + gap);
+              const y = startY + row * (squareSize + gap);
+              return <rect key={i} x={x} y={y} width={squareSize} height={squareSize} />;
+            })}
+          </g>
+        );
+      }
  
       default:
         return <circle cx={center} cy={center} r={radius} fill="currentColor" />;

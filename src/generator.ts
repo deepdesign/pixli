@@ -82,7 +82,8 @@ export type SpriteMode =
   | "line"
   | "pentagon"
   | "asterisk"
-  | "cross";
+  | "cross"
+  | "pixels";
 
 interface ShapeTile {
   kind: "shape";
@@ -171,6 +172,7 @@ const shapeModes = [
   "pentagon",
   "asterisk",
   "cross",
+  "pixels",
 ] as const;
 const spriteModePool: SpriteMode[] = [...shapeModes];
 
@@ -1326,6 +1328,26 @@ export const createSpriteController = (
                   ctx.rect(-barLength / 2, -barThickness / 2, barLength, barThickness);
                   break;
                 }
+                case "pixels": {
+                  // 3x3 grid of squares with spacing
+                  const gridSize = 3;
+                  const gapRatio = 0.15; // Gap is 15% of square size
+                  // Calculate: 3 squares + 2 gaps = shapeSize
+                  // squareSize * 3 + squareSize * gapRatio * 2 = shapeSize
+                  // squareSize * (3 + gapRatio * 2) = shapeSize
+                  const squareSize = shapeSize / (gridSize + gapRatio * (gridSize - 1));
+                  const gap = squareSize * gapRatio;
+                  const startOffset = -(gridSize * squareSize + (gridSize - 1) * gap) / 2;
+                  
+                  for (let row = 0; row < gridSize; row++) {
+                    for (let col = 0; col < gridSize; col++) {
+                      const x = startOffset + col * (squareSize + gap) + squareSize / 2;
+                      const y = startOffset + row * (squareSize + gap) + squareSize / 2;
+                      ctx.rect(x - squareSize / 2, y - squareSize / 2, squareSize, squareSize);
+                    }
+                  }
+                  break;
+                }
                 default:
                   ctx.arc(0, 0, shapeSize / 2, 0, Math.PI * 2);
               }
@@ -1443,6 +1465,28 @@ export const createSpriteController = (
                 p.rectMode(p.CENTER);
                 p.rect(0, 0, barThickness, barLength);
                 p.rect(0, 0, barLength, barThickness);
+                break;
+              }
+              case "pixels": {
+                // 3x3 grid of squares with spacing
+                const gridSize = 3;
+                const gapRatio = 0.15; // Gap is 15% of square size
+                // Calculate: 3 squares + 2 gaps = shapeSize
+                // squareSize * 3 + squareSize * gapRatio * 2 = shapeSize
+                // squareSize * (3 + gapRatio * 2) = shapeSize
+                const squareSize = shapeSize / (gridSize + gapRatio * (gridSize - 1));
+                const gap = squareSize * gapRatio;
+                const startOffset = -(gridSize * squareSize + (gridSize - 1) * gap) / 2;
+                
+                p.rectMode(p.CORNER);
+                for (let row = 0; row < gridSize; row++) {
+                  for (let col = 0; col < gridSize; col++) {
+                    const x = startOffset + col * (squareSize + gap);
+                    const y = startOffset + row * (squareSize + gap);
+                    p.rect(x, y, squareSize, squareSize);
+                  }
+                }
+                p.rectMode(p.CENTER);
                 break;
               }
               default:

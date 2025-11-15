@@ -2645,7 +2645,7 @@ const App = () => {
             {!isMobile && <BitlabLogo className="footer-logo" />}
           </div>
           <span className="footer-text">
-            © {new Date().getFullYear()} BitLab · Generative Playground ·{" "}
+            © {new Date().getFullYear()} BitLab · Generative Playground · v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'} ·{" "}
             <a href="https://jamescutts.me/" target="_blank" rel="noreferrer">
               jamescutts.me
             </a>

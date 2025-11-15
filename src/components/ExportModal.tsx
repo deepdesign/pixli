@@ -216,14 +216,24 @@ export const ExportModal = ({
       setExportProgress(100);
       await new Promise(resolve => setTimeout(resolve, 200));
       
+      // Resume animation before closing modal
+      if (controller && wasAnimatingRef.current) {
+        controller.resumeAnimation();
+        wasAnimatingRef.current = false;
+      }
+      
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Export failed");
       console.error("Export error:", err);
+      // Resume animation even if export fails
+      if (controller && wasAnimatingRef.current) {
+        controller.resumeAnimation();
+        wasAnimatingRef.current = false;
+      }
     } finally {
       setIsExporting(false);
       setExportProgress(0);
-      // Animation will resume when modal closes via useEffect
     }
   }, [p5Instance, width, height, currentCanvasSize, controller, onClose]);
 

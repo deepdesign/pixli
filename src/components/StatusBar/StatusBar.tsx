@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/Button";
 import { Badge } from "@/components/retroui/Badge";
-import { Maximize2, X, RefreshCw, Bookmark, Download, HelpCircle, Info } from "lucide-react";
+import { Maximize2, X, RefreshCw, Bookmark, Share2, HelpCircle, Info } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { animatePulse } from "@/lib/utils/animations";
 import type { GeneratorState, MovementMode } from "@/types/generator";
@@ -108,10 +108,10 @@ export function StatusBar({
       return;
     }
 
-    const checkCompact = () => {
+      const checkCompact = () => {
       const rightWidth = statusBarRightRef.current?.offsetWidth || 0;
       const measureWidth = badgeMeasureRef.current?.offsetWidth || 0;
-      const availableWidth = (statusBarRef?.current?.offsetWidth || 0) - rightWidth - 48; // 48px for padding/gaps
+      const availableWidth = (statusBarRef?.current?.offsetWidth || 0) - rightWidth - 64; // 64px for padding/gaps (increased for share button)
       
       setIsBadgeCompact(measureWidth > availableWidth);
     };
@@ -325,10 +325,10 @@ export function StatusBar({
           onClick={onShowExport}
           disabled={!ready}
           className="status-bar-export-button"
-          aria-label="Export"
-          title="Export"
+          aria-label="Share & Export"
+          title="Share & Export"
         >
-          <Download className="status-bar-icon" />
+          <Share2 className="status-bar-icon" />
         </Button>
         <Button
           type="button"

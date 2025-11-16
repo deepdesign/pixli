@@ -16,6 +16,7 @@ export const MOVEMENT_MODES: Array<{ value: MovementMode; label: string }> = [
   { value: "comet", label: "Comet Trail" },
   { value: "linear", label: "Linear" },
   { value: "isometric", label: "Isometric" },
+  { value: "triangular", label: "Triangular" },
 ];
 
 /**

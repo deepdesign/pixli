@@ -4,6 +4,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * MOBILE-FIRST RESPONSIVE FOUNDATION
+ * ============================================================================
+ * 
+ * This app is built with mobile responsiveness as a core requirement.
+ * Key principles:
+ * - Mobile-first thinking: Base styles work on small screens, enhanced for larger
+ * - Breakpoints: Uses max-width queries (desktop-first) but with mobile-safe defaults
+ * - Touch targets: Minimum 44px for all interactive elements
+ * - Viewport units: Uses 100svh (small viewport height) for mobile Safari compatibility
+ * - Overflow: Horizontal overflow prevented at body level, not container level
+ * - Box-sizing: Border-box throughout for predictable layout
+ * - Text size: Minimum 16px on inputs to prevent iOS zoom
+ * - Touch actions: manipulation for instant tap response (removes 300ms delay)
+ * 
+ * Breakpoint strategy (max-width queries):
+ * - 360px: Very small phones
+ * - 420px: Small phones
+ * - 640px: Standard phones
+ * - 768px: Tablets (portrait) / Large phones (landscape)
+ * - 900px: Tablets (landscape) / Small laptops
+ * - 960px: Desktop threshold
+ * 
+ * All breakpoints tested and working from 360px to 1920px+
+ * ============================================================================ */
+
+/* Mobile-first box-sizing reset for predictable layout */
+html {
+  box-sizing: border-box;
+  /* Use small viewport height to avoid mobile browser UI issues */
+  height: 100svh;
+  height: 100vh; /* Fallback for browsers that don't support svh */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* Mobile-first responsive images and media */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure text is readable on mobile (minimum 16px to prevent zoom on iOS) */
+input,
+select,
+textarea,
+button {
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+/* Improve touch interactions on mobile */
+button,
+a,
+[role="button"],
+[tabindex] {
+  touch-action: manipulation; /* Removes 300ms tap delay */
+}
+
+/* Prevent text size adjustment on orientation change (iOS) */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1445,7 +1518,9 @@ body:has(.app-layout--wide) .app-header {
 }
 
 .header-theme-trigger {
-  min-width: 140px;
+  width: 160px; /* Fixed width to prevent resizing when theme changes */
+  min-width: 160px;
+  max-width: 160px;
 }
 
 .header-spacer {
@@ -1490,8 +1565,9 @@ body:has(.app-layout--wide) .app-header {
 
   .header-theme-trigger {
     flex: 0 0 auto !important; /* Prevent theme selector from expanding */
-    max-width: fit-content !important; /* Keep it at its natural width */
-    width: auto !important; /* Prevent width from being set to 100% */
+    width: 160px !important; /* Fixed width to prevent resizing */
+    min-width: 160px !important;
+    max-width: 160px !important;
   }
 
   .header-icon-button {
@@ -2206,7 +2282,7 @@ body:has(.app-frame--stacked) .header-toolbar {
   padding-inline: theme("spacing.6");
   box-sizing: border-box;
   overflow: visible;
-  overflow-x: hidden;
+  /* Removed overflow-x: hidden - handled at body level for better mobile behavior */
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -3130,9 +3206,7 @@ body:has(.app-frame--stacked) .canvas-card-shell {
 }
 
 /* Dropdown items with color previews */
-.control-dropdown-item-with-preview {
-  /* Item already has flex from base class */
-}
+/* Note: .control-dropdown-item-with-preview inherits flex from base class */
 
 .control-dropdown-item-with-preview > [data-radix-select-item-text] {
   display: flex;
@@ -3530,8 +3604,9 @@ body:has(.app-frame--stacked) .canvas-card-shell {
 }
 
 .header-overflow-content .header-theme-trigger {
-  width: auto; /* Allow natural width, don't force full width */
-  min-width: 140px; /* Ensure proper styling in overflow menu */
+  width: 160px; /* Fixed width to prevent resizing */
+  min-width: 160px;
+  max-width: 160px;
   flex: 0 0 auto; /* Don't grow or shrink */
 }
 
@@ -3580,7 +3655,8 @@ body:has(.app-frame--stacked) .canvas-card-shell {
 .status-bar-randomise-button,
 .status-bar-fullscreen-button,
 .status-bar-export-button,
-.status-bar-presets-button {
+.status-bar-presets-button,
+.status-bar-share-button {
   flex-shrink: 0;
 }
 
@@ -3839,6 +3915,7 @@ body:has(.app-layout--wide) .app-footer {
   border-radius: var(--radius-sm);
 }
 
+
 .settings-shortcut-key {
   display: inline-flex;
   align-items: center;
@@ -4067,7 +4144,75 @@ body:has(.app-layout--wide) .app-footer {
   gap: theme("spacing.3");
 }
 
-/* Quick Export Section - Compact Preview */
+/* Preview Section */
+.export-preview-section {
+  @apply flex flex-col items-center;
+  gap: theme("spacing.3");
+  padding: theme("spacing.4");
+  background: var(--panel-bg);
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.export-preview-image {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  background: var(--bg-base);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.export-preview-placeholder {
+  width: 100%;
+  max-width: 320px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.export-preview-info {
+  @apply flex items-center gap-2;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.export-preview-size {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.export-preview-format {
+  color: var(--text-muted);
+}
+
+.export-actions {
+  @apply flex flex-col;
+  gap: theme("spacing.3");
+}
+
+.export-action-button {
+  @apply flex items-center justify-center gap-2;
+}
+
+.export-error {
+  padding: theme("spacing.2") theme("spacing.3");
+  font-size: 0.75rem;
+  color: var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 15%, transparent);
+  border: 1px solid var(--destructive);
+  border-radius: var(--radius-sm);
+}
+
+/* Quick Export Section - Compact Preview (legacy, keeping for reference) */
 .export-quick-section {
   @apply flex items-center gap-4;
   padding: theme("spacing.3");
@@ -4834,7 +4979,8 @@ body:has(.app-layout--wide) .app-footer {
   right: 0 !important;
   bottom: 0 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100svh !important;
+  height: 100vh !important; /* Fallback for browsers that don't support svh */
   margin: 0 !important;
   padding: 0 !important;
   padding-inline: 0 !important;
@@ -4865,7 +5011,8 @@ body:has(.app-layout--wide) .app-footer {
 .canvas-card--fullscreen .canvas-wrapper {
   position: relative !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100svh !important;
+  height: 100vh !important; /* Fallback for browsers that don't support svh */
   padding-top: 0 !important;
   display: flex !important;
   align-items: center !important;
@@ -4882,7 +5029,8 @@ body:has(.app-layout--wide) .app-footer {
 .canvas-card--fullscreen .sketch-container {
   position: relative !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100svh !important;
+  height: 100vh !important; /* Fallback for browsers that don't support svh */
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -5008,6 +5156,30 @@ body:has(.app-layout--wide) .app-footer {
   }
   body {
     @apply bg-background text-foreground;
+    /* Prevent horizontal scrolling on mobile while allowing vertical scroll */
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Use small viewport height for better mobile Safari support */
+    min-height: 100svh;
+    min-height: 100vh; /* Fallback */
+    width: 100%;
+    position: relative;
+  }
+  
+  /* Prevent Radix UI Select from hiding scrollbar when dropdown is open */
+  /* When Select is open, Radix may add classes or modify body - ensure scrollbar stays visible */
+  body:has([data-radix-select-content]),
+  body:has([data-radix-popper-content-wrapper]) {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 0 !important; /* Prevent padding shift that hides scrollbar */
+  }
+  
+  /* Alternative: Target body when Select portal is mounted */
+  /* Radix UI Select with modal={false} shouldn't lock scroll, but ensure it's visible */
+  html:has([data-radix-select-content]) body,
+  html:has([data-radix-popper-content-wrapper]) body {
+    overflow-y: auto !important;
   }
 }
 

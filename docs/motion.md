@@ -38,6 +38,7 @@ Motion controls how sprites move and animate on the canvas. Each motion mode cre
 7. **Comet Trail** - Trailing motion effect
 8. **Linear** - Straight-line motion
 9. **Isometric** - Hexagonal grid motion
+10. **Perspective** - Tiles emit from center and grow as they move outward, simulating 3D zoom effect
 
 ### Motion Intensity
 

@@ -22,18 +22,20 @@ We introduced a `MOVEMENT_SPEED_MULTIPLIERS` map tuned through testing:
 
 ```ts
 const MOVEMENT_SPEED_MULTIPLIERS: Record<MovementMode, number> = {
-  sway: 2.0,
   drift: 1.625,
-  cascade: 2.9,
-  comet: 3.0,
-  ripple: 3.25,
-  spiral: 4.4,
-  orbit: 1.1,
   zigzag: 2.2,
-  pulse: 1.6,
-  wavefront: 10.0,
+  cascade: 1.6,
+  pulse: 2.7,
+  comet: 3.0,
+  perspective: 4.5,
+  ripple: 3.25,
+  linear: 6.0,
+  isometric: 6.5,
+  spiral: 7.3,
 };
 ```
+
+**Note:** `linear` and `isometric` multipliers were significantly increased from 2.0 and 2.5 respectively to reduce their max motion speeds. They are now closer to `spiral` (7.3) to ensure they move at a comparable, controlled speed.
 
 Higher values indicate modes that were previously too fast (e.g. `wavefront`, `spiral`). Lower values belong to modes that needed a boost (e.g. `drift`, `orbit`).
 

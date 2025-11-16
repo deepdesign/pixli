@@ -168,68 +168,6 @@ export function FxControls({
 
       <div className="section section--spaced">
         <hr className="section-divider" />
-        <h3 className="section-title">CANVAS</h3>
-        <ControlSelect
-          id={isCanvasGradient ? "canvas-gradient" : "background-mode"}
-          label="Canvas"
-          value={spriteState.backgroundMode}
-          onChange={handleCanvasPaletteChange}
-          disabled={!ready}
-          options={canvasPaletteOptions}
-          tooltip={
-            isCanvasGradient
-              ? "Choose the theme for the canvas gradient background."
-              : "Choose the colour applied behind the canvas."
-          }
-          currentLabel={currentCanvasLabel}
-          locked={lockedCanvasPalette}
-          onLockToggle={() => onLockCanvasPalette(!lockedCanvasPalette)}
-        />
-        <div className="control-field">
-          <div className="switch-row">
-            <Switch
-              checked={isCanvasGradient}
-              onCheckedChange={(checked) =>
-                controller?.setCanvasFillMode(checked ? "gradient" : "solid")
-              }
-              disabled={!ready}
-            />
-            <div className="field-heading-left">
-              <span className="field-label">Use gradients</span>
-              <TooltipIcon
-                id="canvas-fill-mode-tip"
-                text="Enable gradient fills for canvas background instead of solid color."
-                label="Use gradients"
-              />
-            </div>
-          </div>
-        </div>
-        <ControlSlider
-          id="background-hue-shift"
-          label="Canvas hue shift"
-          min={0}
-          max={100}
-          value={Math.round(spriteState.backgroundHueShift ?? 0)}
-          displayValue={`${Math.round(spriteState.backgroundHueShift ?? 0)}%`}
-          onChange={(value) => controller?.setBackgroundHueShift(value)}
-          disabled={!ready}
-          tooltip="Shifts the canvas colours around the colour wheel (0–360°)."
-        />
-        <ControlSlider
-          id="background-brightness"
-          label="Canvas brightness"
-          min={0}
-          max={100}
-          value={Math.round(spriteState.backgroundBrightness ?? 50)}
-          displayValue={`${Math.round(spriteState.backgroundBrightness ?? 50)}%`}
-          onChange={(value) => controller?.setBackgroundBrightness(value)}
-          disabled={!ready}
-          tooltip="Adjusts the canvas brightness (0% = darkest, 100% = brightest)."
-        />
-      </div>
-
-      <div className="section section--spaced">
-        <hr className="section-divider" />
         <h3 className="section-title">Blend &amp; Opacity</h3>
         <ControlSlider
           id="opacity-range"
@@ -295,6 +233,68 @@ export function FxControls({
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="section section--spaced">
+        <hr className="section-divider" />
+        <h3 className="section-title">CANVAS</h3>
+        <ControlSelect
+          id={isCanvasGradient ? "canvas-gradient" : "background-mode"}
+          label="Canvas"
+          value={spriteState.backgroundMode}
+          onChange={handleCanvasPaletteChange}
+          disabled={!ready}
+          options={canvasPaletteOptions}
+          tooltip={
+            isCanvasGradient
+              ? "Choose the theme for the canvas gradient background."
+              : "Choose the colour applied behind the canvas."
+          }
+          currentLabel={currentCanvasLabel}
+          locked={lockedCanvasPalette}
+          onLockToggle={() => onLockCanvasPalette(!lockedCanvasPalette)}
+        />
+        <div className="control-field">
+          <div className="switch-row">
+            <Switch
+              checked={isCanvasGradient}
+              onCheckedChange={(checked) =>
+                controller?.setCanvasFillMode(checked ? "gradient" : "solid")
+              }
+              disabled={!ready}
+            />
+            <div className="field-heading-left">
+              <span className="field-label">Use gradients</span>
+              <TooltipIcon
+                id="canvas-fill-mode-tip"
+                text="Enable gradient fills for canvas background instead of solid color."
+                label="Use gradients"
+              />
+            </div>
+          </div>
+        </div>
+        <ControlSlider
+          id="background-hue-shift"
+          label="Canvas hue shift"
+          min={0}
+          max={100}
+          value={Math.round(spriteState.backgroundHueShift ?? 0)}
+          displayValue={`${Math.round(spriteState.backgroundHueShift ?? 0)}%`}
+          onChange={(value) => controller?.setBackgroundHueShift(value)}
+          disabled={!ready}
+          tooltip="Shifts the canvas colours around the colour wheel (0–360°)."
+        />
+        <ControlSlider
+          id="background-brightness"
+          label="Canvas brightness"
+          min={0}
+          max={100}
+          value={Math.round(spriteState.backgroundBrightness ?? 50)}
+          displayValue={`${Math.round(spriteState.backgroundBrightness ?? 50)}%`}
+          onChange={(value) => controller?.setBackgroundBrightness(value)}
+          disabled={!ready}
+          tooltip="Adjusts the canvas brightness (0% = darkest, 100% = brightest)."
+        />
       </div>
     </>
   );

@@ -31,7 +31,7 @@ export const SelectContent = forwardRef<
   SelectPrimitive.SelectContentProps
 >(
   (
-    { className, children, position = "popper", sideOffset = 8, ...props },
+    { className, children, position = "popper", sideOffset = 8, modal = false, ...props },
     ref,
   ) => (
     <SelectPrimitive.Portal>
@@ -40,6 +40,7 @@ export const SelectContent = forwardRef<
         className={cn("control-dropdown-menu", className)}
         position={position}
         sideOffset={sideOffset}
+        modal={modal}
         {...props}
       >
         <SelectPrimitive.ScrollUpButton className="control-select-scroll">

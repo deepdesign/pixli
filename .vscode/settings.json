@@ -1,0 +1,16 @@
+{
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "css.format.enable": false,
+  "css.validate": true,
+  "css.lint.unknownAtRules": "ignore",
+  "[css]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": null
+  },
+  "files.associations": {
+    "*.css": "css"
+  },
+  "files.autoSave": "off"
+}
+

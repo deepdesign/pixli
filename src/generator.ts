@@ -31,6 +31,7 @@ const movementModes = [
   "comet",
   "linear",
   "isometric",
+  "triangular",
 ] as const;
 
 export type MovementMode = (typeof movementModes)[number];
@@ -40,14 +41,15 @@ export type MovementMode = (typeof movementModes)[number];
 // These multipliers ensure all modes feel balanced at 100% animation speed
 const MOVEMENT_SPEED_MULTIPLIERS: Record<MovementMode, number> = {
   drift: 1.625,    // ~1.625x slower - quadrupled speed from 6.5x
-  cascade: 2.9,     // ~2.9x slower (0.045 vs 0.13)
+  cascade: 2.5,     // ~2.5x slower - decreased from 2.9 to speed up animation
   comet: 3.0,       // ~3x slower - reduced speed by 25% from 2.4x
   ripple: 3.25,     // ~3.25x slower (avg 0.04 vs 0.13)
   spiral: 7.3,      // ~7.3x slower (~60% of previous max speed)
   zigzag: 2.2,      // ~2.2x slower (0.06 vs 0.13)
   pulse: 2.7,       // ~2.7x slower (~60% of previous max speed)
-  linear: 2.0,      // ~2x slower - simple linear movement
-  isometric: 2.5,   // ~2.5x slower - isometric grid movement
+  linear: 6.0,      // ~6x slower - significantly increased to reduce max motion speed
+  isometric: 6.5,   // ~6.5x slower - significantly increased to reduce max motion speed
+  triangular: 5.0,  // ~5x slower - triangular edge movement
 };
 
 // Scale multipliers to improve canvas coverage for modes with large movement radii
@@ -58,6 +60,7 @@ const MOVEMENT_SCALE_MULTIPLIERS: Record<MovementMode, number> = {
   comet: 1.3,       // 30% larger sprites for long comet trails
   ripple: 1.15,     // 15% larger sprites for ripple effects
   cascade: 1.1,     // 10% larger sprites for cascading patterns
+  triangular: 1.0,  // No adjustment
   drift: 1.0,       // No adjustment
   pulse: 1.0,       // No adjustment
   zigzag: 1.0,      // No adjustment
@@ -536,6 +539,42 @@ const computeMovementOffsets = (
       // Pick angle based on phase (deterministic per sprite)
       const angleIndex = Math.floor((phase * 0.142857) % hexAngledEdges.length);
       const angle = hexAngledEdges[angleIndex];
+      
+      // Parallax effect: speed relative to sprite size
+      // Smaller sprites move slower, larger sprites move faster
+      const sizeRatio = baseUnit / layerTileSize; // 0-1, smaller sprites have smaller ratio
+      const speedMultiplier = 0.3 + sizeRatio * 0.7; // Range: 0.3 to 1.0
+      
+      // Calculate distance based on sprite size and canvas size
+      const maxDistance = (layerTileSize * 0.7 * motionScale + baseUnit * 0.5) * speedMultiplier;
+      
+      // Create oscillating motion - use sine wave directly for smooth, consistent speed
+      // Remove phase from oscillation to ensure all sprites with same angle move in sync
+      const oscillation = Math.sin(phased * 0.04);
+      
+      // Use sine wave directly - it already has smooth, natural acceleration/deceleration
+      // No additional easing needed to avoid speed bumps
+      const travel = oscillation * maxDistance;
+      const offsetX = Math.cos(angle) * travel;
+      const offsetY = Math.sin(angle) * travel;
+      return { offsetX, offsetY, scaleMultiplier: 1 };
+    }
+    case "triangular": {
+      // Equilateral triangle with flat base and point at top
+      // Triangle orientation: flat base (horizontal), point at top
+      // The three edges match the outside edge angles of the triangle primitive:
+      // - Left edge: 120° (down-left)
+      // - Bottom edge: 0° (horizontal, flat base - straight right)
+      // - Right edge: 60° (down-right)
+      const triangleEdges = [
+        (2 * Math.PI) / 3,   // 120° - left edge (down-left)
+        0,                   // 0° - bottom edge (horizontal, flat base)
+        Math.PI / 3,         // 60° - right edge (down-right)
+      ];
+      
+      // Pick angle based on phase (deterministic per sprite)
+      const angleIndex = Math.floor((phase * 0.142857) % triangleEdges.length);
+      const angle = triangleEdges[angleIndex];
       
       // Parallax effect: speed relative to sprite size
       // Smaller sprites move slower, larger sprites move faster
@@ -1209,6 +1248,7 @@ export const createSpriteController = (
           p.blendMode(blendMap[tileBlendMode] ?? p.BLEND);
           
           // Calculate movement offsets
+          // Normal wrapping for all modes - calculate first
           let normalizedU = ((tile.u % 1) + 1) % 1;
           let normalizedV = ((tile.v % 1) + 1) % 1;
           let movement = { offsetX: 0, offsetY: 0, scaleMultiplier: 1 };
@@ -1226,12 +1266,8 @@ export const createSpriteController = (
               speedFactor: 1.0, // Speed is already applied to scaledAnimationTime
             });
             
-            // Normal wrapping for all modes
-            normalizedU = ((tile.u % 1) + 1) % 1;
-            normalizedV = ((tile.v % 1) + 1) % 1;
-            
-            const baseX = offsetX + normalizedU * drawSize;
-            const baseY = offsetY + normalizedV * drawSize;
+            const baseX = offsetX + normalizedU * drawSize + movement.offsetX;
+            const baseY = offsetY + normalizedV * drawSize + movement.offsetY;
             
             const finalMovement = movement;
             const shapeSize = baseShapeSize * finalMovement.scaleMultiplier;

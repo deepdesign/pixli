@@ -51,7 +51,7 @@ export function WelcomeScreen({ onClose, onStartTour }: WelcomeScreenProps) {
       }}
     >
       <Card
-        className="w-full max-w-lg p-6"
+        className="w-full max-w-lg p-6 max-h-[80vh] overflow-auto"
         style={{
           transform: isVisible ? "scale(1)" : "scale(0.95)",
           transition: "transform 0.2s ease",

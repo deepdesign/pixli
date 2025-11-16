@@ -11,7 +11,7 @@ import {
   TabsPanels,
   TabsContent,
 } from "@/components/retroui/Tab";
-import { X, Settings2 } from "lucide-react";
+import { X, Settings2, Share2, Copy, Check, Download } from "lucide-react";
 import p5 from "p5";
 import { exportCanvas, downloadImage, createThumbnail, getCanvasFromP5 } from "@/lib/services";
 import { animateSuccess } from "@/lib/utils/animations";
@@ -73,7 +73,12 @@ export const ExportModal = ({
   const [aspectRatio, setAspectRatio] = useState(1); // Store the aspect ratio when locked
   const [selectedPreset, setSelectedPreset] = useState<string | null>("Quick-Current"); // Track selected preset
   const exportButtonRef = useRef<HTMLButtonElement>(null);
+  const shareButtonRef = useRef<HTMLButtonElement>(null);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Update dimensions when canvas size changes
   useEffect(() => {
@@ -123,6 +128,12 @@ export const ExportModal = ({
       // Resume animation when modal closes
       controller.resumeAnimation();
       wasAnimatingRef.current = false;
+    }
+    // Reset share state when modal opens/closes
+    if (isOpen) {
+      setShareError(null);
+      setCopied(false);
+      setIsSharing(false);
     }
   }, [isOpen, p5Instance, controller]);
 
@@ -291,12 +302,156 @@ export const ExportModal = ({
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (e.target === e.currentTarget && !isExporting) {
+      if (e.target === e.currentTarget && !isExporting && !isSharing) {
         handleClose();
       }
     },
-    [handleClose, isExporting],
+    [handleClose, isExporting, isSharing],
   );
+
+  const handleShare = useCallback(async () => {
+    try {
+      if (!p5Instance) {
+        setShareError("Canvas not available");
+        return;
+      }
+
+      setIsSharing(true);
+      setShareError(null);
+
+      const canvas = getCanvasFromP5(p5Instance);
+      if (!canvas) {
+        setShareError("Canvas not found");
+        setIsSharing(false);
+        return;
+      }
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), "image/png");
+      });
+
+      if (!blob) {
+        setShareError("Failed to create image");
+        setIsSharing(false);
+        return;
+      }
+
+      const file = new File([blob], "pixli-art.png", { type: "image/png" });
+
+      // Check if Web Share API is available
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: "Pixli Art",
+          text: "Check out this art I created with Pixli!",
+          files: [file],
+        });
+        if (shareButtonRef.current) {
+          animateSuccess(shareButtonRef.current);
+        }
+      } else if (navigator.share) {
+        // Fallback: share URL if file sharing not supported
+        await navigator.share({
+          title: "Pixli Art",
+          text: "Check out this art I created with Pixli!",
+          url: window.location.href,
+        });
+        if (shareButtonRef.current) {
+          animateSuccess(shareButtonRef.current);
+        }
+      } else {
+        // Fallback: copy image to clipboard
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "image/png": blob,
+            }),
+          ]);
+          setCopied(true);
+          if (copyButtonRef.current) {
+            animateSuccess(copyButtonRef.current);
+          }
+          setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+          // If clipboard API fails, fall back to download
+          downloadImage(canvas.toDataURL("image/png"), "pixli-art.png");
+          if (shareButtonRef.current) {
+            animateSuccess(shareButtonRef.current);
+          }
+        }
+      }
+    } catch (error) {
+      // User cancelled or error occurred
+      if (error instanceof Error && error.name !== "AbortError") {
+        setShareError(error.message || "Share failed");
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  }, [p5Instance]);
+
+  const handleCopyToClipboard = useCallback(async () => {
+    try {
+      if (!p5Instance) {
+        setShareError("Canvas not available");
+        return;
+      }
+
+      setShareError(null);
+
+      const canvas = getCanvasFromP5(p5Instance);
+      if (!canvas) {
+        setShareError("Canvas not found");
+        return;
+      }
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), "image/png");
+      });
+
+      if (!blob) {
+        setShareError("Failed to create image");
+        return;
+      }
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "image/png": blob,
+        }),
+      ]);
+
+      setCopied(true);
+      if (copyButtonRef.current) {
+        animateSuccess(copyButtonRef.current);
+      }
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "Failed to copy to clipboard"
+      );
+    }
+  }, [p5Instance]);
+
+  const handleQuickDownload = useCallback(() => {
+    if (!p5Instance) {
+      setError("Canvas not available");
+      return;
+    }
+
+    const canvas = getCanvasFromP5(p5Instance);
+    if (!canvas) {
+      setError("Canvas not found");
+      return;
+    }
+
+    downloadImage(canvas.toDataURL("image/png"), "pixli-art.png");
+    if (exportButtonRef.current) {
+      animateSuccess(exportButtonRef.current);
+    }
+  }, [p5Instance]);
 
   if (!isOpen) {
     return null;
@@ -335,7 +490,7 @@ export const ExportModal = ({
             </TabsTriggerList>
             <TabsPanels>
               <TabsContent>
-                {/* Compact Preview & Quick Export */}
+                {/* Compact Preview & Quick Actions */}
                 <div className="export-quick-section mb-[theme(spacing.4)]">
                   <div className="export-preview-compact">
                     {thumbnail ? (
@@ -357,6 +512,67 @@ export const ExportModal = ({
                       <div className="export-quick-size-label">Current size</div>
                     </div>
                   </div>
+                </div>
+
+                {/* Share & Download Actions */}
+                <div className="section mb-[theme(spacing.4)]">
+                  <div className="export-actions">
+                    {typeof navigator.share !== "undefined" && (
+                      <Button
+                        ref={shareButtonRef}
+                        type="button"
+                        size="md"
+                        variant="default"
+                        onClick={handleShare}
+                        disabled={isSharing || !p5Instance}
+                        className="export-action-button"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        {isSharing ? "Sharing..." : "Share"}
+                      </Button>
+                    )}
+
+                    {typeof navigator.clipboard !== "undefined" && typeof ClipboardItem !== "undefined" && (
+                      <Button
+                        ref={copyButtonRef}
+                        type="button"
+                        size="md"
+                        variant="outline"
+                        onClick={handleCopyToClipboard}
+                        disabled={!p5Instance}
+                        className="export-action-button"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            Copy Image
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      size="md"
+                      variant="outline"
+                      onClick={handleQuickDownload}
+                      disabled={!p5Instance}
+                      className="export-action-button"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+                  </div>
+                  {(shareError || error) && (
+                    <div className="export-error mt-[theme(spacing.2)]" role="alert">
+                      {shareError || error}
+                    </div>
+                  )}
                 </div>
 
                 {/* Advanced Options Accordion */}
@@ -455,7 +671,7 @@ export const ExportModal = ({
                   </Accordion.Item>
                 </Accordion>
 
-                {/* Export Button */}
+                {/* Advanced Export Button */}
                 <Button
                   ref={exportButtonRef}
                   type="button"
@@ -464,9 +680,9 @@ export const ExportModal = ({
                   onClick={handleExport}
                   disabled={isExporting || !p5Instance}
                   className="export-button-full-width mt-[theme(spacing.4)]"
-                  aria-label={isExporting ? "Exporting canvas" : "Export canvas"}
+                  aria-label={isExporting ? "Exporting canvas" : "Export canvas at custom size"}
                 >
-                  {isExporting ? "Exporting..." : "Export"}
+                  {isExporting ? `Exporting... ${exportProgress > 0 ? `${exportProgress}%` : ""}` : "Export Custom Size"}
                 </Button>
               </TabsContent>
               <TabsContent>

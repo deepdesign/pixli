@@ -554,6 +554,7 @@ const App = () => {
   // FxControls rendering is now handled by FxControls component
 
 
+
   const handleLoadPreset = useCallback(
     (state: GeneratorState) => {
       controllerRef.current?.applyState(state);
@@ -634,8 +635,8 @@ const App = () => {
               onMouseLeave={handleHUDMouseLeave}
               onRandomiseAll={handleRandomiseAll}
               onShowPresets={() => setShowPresetManager(true)}
-              onShowExport={() => setShowExportModal(true)}
-              onFullscreenToggle={handleFullscreenToggle}
+                  onShowExport={() => setShowExportModal(true)}
+                  onFullscreenToggle={handleFullscreenToggle}
               onFullscreenClose={handleFullscreenClose}
               formatBlendMode={formatBlendMode}
               formatMovementMode={formatMovementMode}

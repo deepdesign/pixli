@@ -80,17 +80,32 @@ export const ExportModal = ({
   const [shareError, setShareError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Update dimensions when canvas size changes
+  // Update dimensions when canvas size changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setWidth(currentCanvasSize.width);
-      setHeight(currentCanvasSize.height);
-      // Update aspect ratio based on current canvas (should be 1:1 for square canvas)
-      setAspectRatio(currentCanvasSize.width / currentCanvasSize.height);
+      // Force update canvas size when modal opens to ensure we have the latest size
+      if (p5Instance) {
+        const canvas = getCanvasFromP5(p5Instance);
+        if (canvas) {
+          const actualWidth = canvas.width || currentCanvasSize.width;
+          const actualHeight = canvas.height || currentCanvasSize.height;
+          setWidth(actualWidth);
+          setHeight(actualHeight);
+          setAspectRatio(actualWidth / actualHeight);
+        } else {
+          setWidth(currentCanvasSize.width);
+          setHeight(currentCanvasSize.height);
+          setAspectRatio(currentCanvasSize.width / currentCanvasSize.height);
+        }
+      } else {
+        setWidth(currentCanvasSize.width);
+        setHeight(currentCanvasSize.height);
+        setAspectRatio(currentCanvasSize.width / currentCanvasSize.height);
+      }
       // Set "Current" as selected by default
       setSelectedPreset("Quick-Current");
     }
-  }, [currentCanvasSize, isOpen]);
+  }, [currentCanvasSize, isOpen, p5Instance]);
 
   // Handle width change with aspect ratio lock
   const handleWidthChange = useCallback((newWidth: number) => {
@@ -500,7 +515,7 @@ export const ExportModal = ({
                         className="export-thumbnail-compact"
                       />
                     ) : (
-                      <div className="export-thumbnail-placeholder-compact">Loading...</div>
+                      <div className="export-thumbnail-placeholder-compact" aria-label="Loading preview"></div>
                     )}
                     <div className="export-quick-info">
                       <div className="export-quick-size">
@@ -515,14 +530,14 @@ export const ExportModal = ({
                 </div>
 
                 {/* Share & Download Actions */}
-                <div className="section mb-[theme(spacing.4)]">
+                <div className="section">
                   <div className="export-actions">
                     {typeof navigator.share !== "undefined" && (
                       <Button
                         ref={shareButtonRef}
                         type="button"
                         size="md"
-                        variant="default"
+                        variant="outline"
                         onClick={handleShare}
                         disabled={isSharing || !p5Instance}
                         className="export-action-button"
@@ -588,7 +603,7 @@ export const ExportModal = ({
                       <div className="field-heading">
                         <span className="section-title">Dimensions</span>
                       </div>
-                      <div className="control-field">
+                      <div className="control-field mt-[theme(spacing.3)]">
                         <div className="field-heading">
                           <span className="field-label">Size</span>
                         </div>
@@ -631,7 +646,7 @@ export const ExportModal = ({
                       </div>
 
                       {/* Presets - Compact Grid */}
-                      <div className="export-presets-compact">
+                      <div className="export-presets-compact mt-[theme(spacing.3)]">
                         {Object.entries(DIMENSION_PRESETS).map(([category, presets]) => (
                           <div key={category} className="export-preset-category">
                             <div className="export-preset-category-label">{category}</div>
@@ -663,27 +678,27 @@ export const ExportModal = ({
                     </div>
 
                     {/* File size estimate */}
-                    <div className="export-file-size-compact">
+                    <div className="export-file-size-compact mt-[theme(spacing.2)]">
                       ~{fileSizeEstimate}
                       {isLargeExport && <span className="export-warning-compact"> · Large export</span>}
                     </div>
+
+                    {/* Advanced Export Button */}
+                    <Button
+                      ref={exportButtonRef}
+                      type="button"
+                      variant="outline"
+                      size="md"
+                      onClick={handleExport}
+                      disabled={isExporting || !p5Instance}
+                      className="export-button-full-width mt-[theme(spacing.4)]"
+                      aria-label={isExporting ? "Exporting canvas" : "Export canvas at custom size"}
+                    >
+                      {isExporting ? `Exporting... ${exportProgress > 0 ? `${exportProgress}%` : ""}` : "Export Custom Size"}
+                    </Button>
                     </Accordion.Content>
                   </Accordion.Item>
                 </Accordion>
-
-                {/* Advanced Export Button */}
-                <Button
-                  ref={exportButtonRef}
-                  type="button"
-                  variant="default"
-                  size="md"
-                  onClick={handleExport}
-                  disabled={isExporting || !p5Instance}
-                  className="export-button-full-width mt-[theme(spacing.4)]"
-                  aria-label={isExporting ? "Exporting canvas" : "Export canvas at custom size"}
-                >
-                  {isExporting ? `Exporting... ${exportProgress > 0 ? `${exportProgress}%` : ""}` : "Export Custom Size"}
-                </Button>
               </TabsContent>
               <TabsContent>
                 {/* Looping Video Export */}

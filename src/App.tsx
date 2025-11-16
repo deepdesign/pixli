@@ -396,12 +396,15 @@ const App = () => {
     
     const container = sketchContainerRef.current;
     
-    // Update immediately
-    updateCanvasSize();
+    // Update immediately with a small delay to ensure canvas is ready
+    const initialUpdate = setTimeout(() => {
+      updateCanvasSize();
+    }, 100);
     
     // Watch the container for size changes (triggers when layout changes)
     // This will catch both container resizes and window resizes (since container resizes with window)
     let containerResizeObserver: ResizeObserver | null = null;
+    let canvasResizeObserver: ResizeObserver | null = null;
     let resizeTimeoutId: ReturnType<typeof setTimeout> | null = null;
     
     if (container && typeof ResizeObserver !== 'undefined') {
@@ -419,17 +422,52 @@ const App = () => {
       containerResizeObserver.observe(container);
     }
     
+    // Also watch the canvas element directly for size changes
+    if (canvas && typeof ResizeObserver !== 'undefined') {
+      canvasResizeObserver = new ResizeObserver(() => {
+        // Clear any pending resize timeout
+        if (resizeTimeoutId) {
+          clearTimeout(resizeTimeoutId);
+        }
+        // Delay to ensure p5.js has processed the resize
+        resizeTimeoutId = setTimeout(() => {
+          updateCanvasSize();
+          resizeTimeoutId = null;
+        }, 50);
+      });
+      canvasResizeObserver.observe(canvas);
+    }
+    
+    // Also listen for window resize events as a fallback
+    const handleWindowResize = () => {
+      if (resizeTimeoutId) {
+        clearTimeout(resizeTimeoutId);
+      }
+      resizeTimeoutId = setTimeout(() => {
+        updateCanvasSize();
+        resizeTimeoutId = null;
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleWindowResize);
+    
     return () => {
+      clearTimeout(initialUpdate);
       // Clear any pending resize timeout
       if (resizeTimeoutId) {
         clearTimeout(resizeTimeoutId);
         resizeTimeoutId = null;
       }
-      // Disconnect ResizeObserver
+      // Disconnect ResizeObservers
       if (containerResizeObserver) {
         containerResizeObserver.disconnect();
         containerResizeObserver = null;
       }
+      if (canvasResizeObserver) {
+        canvasResizeObserver.disconnect();
+        canvasResizeObserver = null;
+      }
+      window.removeEventListener('resize', handleWindowResize);
     };
   }, [spriteState, controllerRef.current, updateCanvasSize]);
   

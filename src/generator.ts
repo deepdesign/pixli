@@ -47,9 +47,9 @@ const MOVEMENT_SPEED_MULTIPLIERS: Record<MovementMode, number> = {
   spiral: 7.3,      // ~7.3x slower (~60% of previous max speed)
   zigzag: 2.2,      // ~2.2x slower (0.06 vs 0.13)
   pulse: 2.7,       // ~2.7x slower (~60% of previous max speed)
-  linear: 10.0,      // ~10x slower - increased to further reduce max motion speed
-  isometric: 10.0,   // ~10x slower - significantly increased to reduce max motion speed
-  triangular: 10.0,  // ~10x slower - triangular edge movement
+  linear: 8.0,      // ~8x slower - increased to further reduce max motion speed
+  isometric: 8.0,   // ~8x slower - significantly increased to reduce max motion speed
+  triangular: 8.0,  // ~8x slower - triangular edge movement
 };
 
 // Scale multipliers to improve canvas coverage for modes with large movement radii

@@ -809,6 +809,7 @@ export interface SpriteController {
   applyState: (state: GeneratorState) => void;
   randomizeAll: () => void;
   randomizeColors: () => void;
+  refreshPaletteApplication: () => void;
   randomizeScale: () => void;
   randomizeScaleRange: () => void;
   randomizeMotion: () => void;
@@ -1734,6 +1735,15 @@ export const createSpriteController = (
       updateSeed();
       stateRef.current.paletteId = getRandomPalette().id;
       stateRef.current.paletteVariance = randomInt(32, 126);
+      state = stateRef.current; // Keep local variable in sync
+      updateSprite();
+    },
+    refreshPaletteApplication: () => {
+      // Re-apply the current palette randomly across sprites
+      // This keeps the same palette but randomizes which colors are assigned to which sprites
+      // We need to regenerate the sprite with a new seed to randomize color assignments
+      // The color RNG is based on `${seed}-color`, so updating the seed will change color assignments
+      updateSeed();
       state = stateRef.current; // Keep local variable in sync
       updateSprite();
     },

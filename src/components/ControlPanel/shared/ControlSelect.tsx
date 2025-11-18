@@ -34,6 +34,7 @@ interface ControlSelectProps {
   locked?: boolean;
   onLockToggle?: () => void;
   prefixButton?: React.ReactNode;
+  suffixButton?: React.ReactNode;
 }
 
 /**
@@ -57,6 +58,7 @@ export function ControlSelect({
   locked,
   onLockToggle,
   prefixButton,
+  suffixButton,
 }: ControlSelectProps) {
   const isMobile = useIsMobile();
   // Apply modal behavior to these dropdowns on mobile
@@ -261,6 +263,7 @@ export function ControlSelect({
           </SelectContent>
         </Select>
         {prefixButton}
+        {suffixButton}
         {onLockToggle && (
           <Button
             type="button"

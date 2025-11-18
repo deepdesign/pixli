@@ -71,6 +71,7 @@ export function FxControls({
   onShowCustomPaletteManager,
 }: FxControlsProps) {
   const blendAutoLabelId = "blend-auto-label";
+  const refreshPaletteButtonRef = useRef<HTMLButtonElement>(null);
   const isCanvasGradient = spriteState.canvasFillMode === "gradient";
   const currentCanvasLabel =
     canvasPaletteOptions.find(
@@ -108,6 +109,26 @@ export function FxControls({
           onLockToggle={() => onLockSpritePalette(!lockedSpritePalette)}
           prefixButton={
             <Button
+              ref={refreshPaletteButtonRef}
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => {
+                if (refreshPaletteButtonRef.current) {
+                  animatePulse(refreshPaletteButtonRef.current);
+                }
+                controller?.refreshPaletteApplication();
+              }}
+              disabled={!ready || lockedSpritePalette}
+              aria-label="Refresh palette application"
+              title="Re-apply the selected palette randomly across sprites"
+              className="flex-shrink-0"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          }
+          suffixButton={
+            <Button
               type="button"
               size="icon"
               variant="outline"
@@ -115,7 +136,7 @@ export function FxControls({
               disabled={!ready}
               aria-label="Manage custom palettes"
               title="Manage custom palettes"
-              style={{ flexShrink: 0 }}
+              className="flex-shrink-0"
             >
               <ImagePlus className="h-4 w-4" />
             </Button>

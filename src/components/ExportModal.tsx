@@ -13,7 +13,7 @@ import {
 } from "@/components/retroui/Tab";
 import { X, Settings2, Share2, Copy, Check, Download } from "lucide-react";
 import p5 from "p5";
-import { exportCanvas, downloadImage, createThumbnail, getCanvasFromP5 } from "@/lib/services";
+import { exportCanvas, downloadImage, createThumbnail, getCanvasFromP5, addLogoToCanvas, generateExportFilename } from "@/lib/services";
 import { animateSuccess } from "@/lib/utils/animations";
 import type { SpriteController } from "../generator";
 // Loop recording uses MediaRecorder on the canvas stream
@@ -258,19 +258,20 @@ export const ExportModal = ({
       }
 
       setExportProgress(50);
+      const paletteId = controller?.getState()?.paletteId;
       const dataUrl = await exportCanvas(p5Instance, {
         width: exportWidth,
         height: exportHeight,
         format: "png", // Always use PNG
         scale: Math.min(scale, 3), // Cap at 3x to avoid memory issues
-      });
+      }, paletteId);
 
       setExportProgress(75);
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Generate filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
-      const filename = `pixli-export-${exportWidth}x${exportHeight}-${timestamp}.png`;
+      // Generate filename based on generator settings
+      const state = controller?.getState() || null;
+      const filename = generateExportFilename(state, exportWidth, exportHeight);
 
       setExportProgress(90);
       downloadImage(dataUrl, filename);
@@ -341,9 +342,27 @@ export const ExportModal = ({
         return;
       }
 
+      // Create a temporary canvas with logo
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) {
+        setShareError("Failed to create canvas context");
+        setIsSharing(false);
+        return;
+      }
+
+      // Draw the original canvas
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Add logo with palette from controller if available
+      const paletteId = controller?.getState()?.paletteId;
+      await addLogoToCanvas(tempCtx, canvas.width, canvas.height, tempCanvas, paletteId);
+
       // Convert canvas to blob
       const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), "image/png");
+        tempCanvas.toBlob((blob) => resolve(blob), "image/png");
       });
 
       if (!blob) {
@@ -352,7 +371,10 @@ export const ExportModal = ({
         return;
       }
 
-      const file = new File([blob], "pixli-art.png", { type: "image/png" });
+      // Generate filename for share
+      const state = controller?.getState() || null;
+      const shareFilename = generateExportFilename(state);
+      const file = new File([blob], shareFilename, { type: "image/png" });
 
       // Check if Web Share API is available
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -389,7 +411,9 @@ export const ExportModal = ({
           setTimeout(() => setCopied(false), 2000);
         } catch (err) {
           // If clipboard API fails, fall back to download
-          downloadImage(canvas.toDataURL("image/png"), "pixli-art.png");
+          const state = controller?.getState() || null;
+          const filename = generateExportFilename(state);
+          downloadImage(tempCanvas.toDataURL("image/png"), filename);
           if (shareButtonRef.current) {
             animateSuccess(shareButtonRef.current);
           }
@@ -403,7 +427,7 @@ export const ExportModal = ({
     } finally {
       setIsSharing(false);
     }
-  }, [p5Instance]);
+  }, [p5Instance, controller]);
 
   const handleCopyToClipboard = useCallback(async () => {
     try {
@@ -420,9 +444,26 @@ export const ExportModal = ({
         return;
       }
 
+      // Create a temporary canvas with logo
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) {
+        setShareError("Failed to create canvas context");
+        return;
+      }
+
+      // Draw the original canvas
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Add logo with palette from controller if available
+      const paletteId = controller?.getState()?.paletteId;
+      await addLogoToCanvas(tempCtx, canvas.width, canvas.height, tempCanvas, paletteId);
+
       // Convert canvas to blob
       const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), "image/png");
+        tempCanvas.toBlob((blob) => resolve(blob), "image/png");
       });
 
       if (!blob) {
@@ -448,9 +489,9 @@ export const ExportModal = ({
           : "Failed to copy to clipboard"
       );
     }
-  }, [p5Instance]);
+  }, [p5Instance, controller]);
 
-  const handleQuickDownload = useCallback(() => {
+  const handleQuickDownload = useCallback(async () => {
     if (!p5Instance) {
       setError("Canvas not available");
       return;
@@ -462,11 +503,35 @@ export const ExportModal = ({
       return;
     }
 
-    downloadImage(canvas.toDataURL("image/png"), "pixli-art.png");
-    if (exportButtonRef.current) {
-      animateSuccess(exportButtonRef.current);
+    try {
+      // Create a temporary canvas with logo
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) {
+        setError("Failed to create canvas context");
+        return;
+      }
+
+      // Draw the original canvas
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Add logo with palette from controller if available
+      const paletteId = controller?.getState()?.paletteId;
+      await addLogoToCanvas(tempCtx, canvas.width, canvas.height, tempCanvas, paletteId);
+
+      // Generate filename based on generator settings
+      const state = controller?.getState() || null;
+      const filename = generateExportFilename(state, canvas.width, canvas.height);
+      downloadImage(tempCanvas.toDataURL("image/png"), filename);
+      if (exportButtonRef.current) {
+        animateSuccess(exportButtonRef.current);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to download image");
     }
-  }, [p5Instance]);
+  }, [p5Instance, controller]);
 
   if (!isOpen) {
     return null;

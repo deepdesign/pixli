@@ -157,6 +157,10 @@ export interface GeneratorState {
   canvasGradientMode: BackgroundMode; // Same options as backgroundMode
   canvasGradientDirection: number; // 0-360 degrees
   randomSprites: boolean; // When true, each sprite uses a random shape from the selection
+  // Depth of field settings
+  depthOfFieldEnabled: boolean;
+  depthOfFieldFocus: number; // 0-100, represents focus percentage (50 = middle)
+  depthOfFieldStrength: number; // 0-100, controls blur intensity (0 = no blur, 100 = max blur)
 }
 
 export interface SpriteControllerOptions {
@@ -216,6 +220,10 @@ export const DEFAULT_STATE: GeneratorState = {
   canvasGradientMode: "auto",
   canvasGradientDirection: 0,
   randomSprites: false,
+  // Depth of field defaults
+  depthOfFieldEnabled: false,
+  depthOfFieldFocus: 50, // Start at middle of depth range
+  depthOfFieldStrength: 50, // Moderate blur strength
 };
 
 const SEED_ALPHABET = "0123456789ABCDEF";
@@ -844,6 +852,9 @@ export interface SpriteController {
   setCanvasGradientMode: (mode: BackgroundMode) => void;
   setCanvasGradientDirection: (degrees: number) => void;
   setRandomSprites: (enabled: boolean) => void;
+  setDepthOfFieldEnabled: (value: boolean) => void;
+  setDepthOfFieldFocus: (value: number) => void;
+  setDepthOfFieldStrength: (value: number) => void;
   applySingleTilePreset: () => void;
   applyNebulaPreset: () => void;
   applyMinimalGridPreset: () => void;
@@ -1234,6 +1245,51 @@ export const createSpriteController = (
         LIGHTEST: p.LIGHTEST ?? p.BLEND,
       };
 
+      // Depth of field setup
+      const MAX_BLUR_RADIUS = 48; // Maximum blur radius in pixels
+      const DOF_THRESHOLD = 0.01; // 1% threshold to skip blur for sprites very close to focus
+      let minSize = Infinity;
+      let maxSize = 0;
+      
+      // First pass: collect all sprite sizes to determine z-index range
+      if (currentState.depthOfFieldEnabled) {
+        prepared.layers.forEach((layer, layerIndex) => {
+          if (layer.tiles.length === 0) {
+            return;
+          }
+          const baseLayerSize = drawSize * layer.baseSizeRatio;
+          
+          layer.tiles.forEach((tile, tileIndex) => {
+            if (tile.kind === "shape") {
+              const baseShapeSize =
+                baseLayerSize * tile.scale * (1 + layerIndex * 0.08);
+              const movement = computeMovementOffsets(currentState.movementMode, {
+                time: scaledAnimationTime,
+                phase: tileIndex * 7, // Use actual tile phase for accurate size calculation
+                motionScale,
+                layerIndex,
+                baseUnit: baseShapeSize,
+                layerTileSize: baseLayerSize,
+                speedFactor: 1.0,
+              });
+              const shapeSize = baseShapeSize * movement.scaleMultiplier;
+              minSize = Math.min(minSize, shapeSize);
+              maxSize = Math.max(maxSize, shapeSize);
+            }
+          });
+        });
+      }
+      
+      const sizeRange = maxSize - minSize;
+      // Only enable DoF if we have a valid size range and DoF is enabled
+      const hasValidSizeRange = sizeRange > 0 && isFinite(minSize) && isFinite(maxSize);
+      const focusZ = currentState.depthOfFieldEnabled && hasValidSizeRange
+        ? lerp(0, 1, currentState.depthOfFieldFocus / 100) // Normalized focus (0-1)
+        : 0.5;
+      const maxBlur = currentState.depthOfFieldEnabled && hasValidSizeRange
+        ? (currentState.depthOfFieldStrength / 100) * MAX_BLUR_RADIUS
+        : 0;
+
       prepared.layers.forEach((layer, layerIndex) => {
         if (layer.tiles.length === 0) {
           return;
@@ -1276,7 +1332,30 @@ export const createSpriteController = (
             const opacityValue = clamp(currentState.layerOpacity / 100, 0.12, 1);
             const opacityAlpha = Math.round(opacityValue * 255);
 
+            // Calculate depth of field blur
+            let blurAmount = 0;
+            if (currentState.depthOfFieldEnabled && hasValidSizeRange && maxBlur > 0) {
+              // Calculate normalized z-index from size (0 = smallest, 1 = largest)
+              const normalizedZ = sizeRange > 0 ? (shapeSize - minSize) / sizeRange : 0.5;
+              // Calculate distance from focus plane
+              const distance = Math.abs(normalizedZ - focusZ);
+              // Calculate blur using quadratic falloff
+              const normalizedDist = distance; // Already normalized (0-1)
+              blurAmount = Math.pow(normalizedDist, 2) * maxBlur;
+              // Skip blur if very close to focus (performance optimization)
+              if (blurAmount < DOF_THRESHOLD * maxBlur) {
+                blurAmount = 0;
+              }
+            }
+
             p.push();
+            
+            // Apply blur filter if needed
+            if (blurAmount > 0) {
+              ctx.filter = `blur(${blurAmount}px)`;
+            } else {
+              ctx.filter = 'none';
+            }
             const halfSize = shapeSize / 2;
             const allowableOverflow = Math.max(drawSize * 0.6, shapeSize * 1.25);
             
@@ -1652,6 +1731,8 @@ export const createSpriteController = (
               }
             }
 
+            // Reset filter after drawing sprite
+            ctx.filter = 'none';
             p.pop();
           }
         });
@@ -1990,6 +2071,18 @@ export const createSpriteController = (
     setRandomSprites: (enabled: boolean) => {
       // Random sprites requires regeneration to assign random shapes to each tile
       applyState({ randomSprites: enabled });
+    },
+    setDepthOfFieldEnabled: (value: boolean) => {
+      // Depth of field is applied during rendering, no regeneration needed
+      applyState({ depthOfFieldEnabled: value }, { recompute: false });
+    },
+    setDepthOfFieldFocus: (value: number) => {
+      // Focus is applied during rendering, no regeneration needed
+      applyState({ depthOfFieldFocus: clamp(value, 0, 100) }, { recompute: false });
+    },
+    setDepthOfFieldStrength: (value: number) => {
+      // Blur strength is applied during rendering, no regeneration needed
+      applyState({ depthOfFieldStrength: clamp(value, 0, 100) }, { recompute: false });
     },
     applySingleTilePreset: () => {
       updateSeed();

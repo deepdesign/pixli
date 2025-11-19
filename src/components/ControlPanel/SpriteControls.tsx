@@ -189,6 +189,60 @@ export function SpriteControls({
 
       <div className="section section--spaced">
         <hr className="section-divider" />
+        <h3 className="section-title">Depth</h3>
+        <div className="control-field control-field--rotation">
+          <div className="field-heading">
+            <div className="field-heading-left">
+              <span className="field-label" id="depth-of-field-toggle-label">
+                Depth of Field
+              </span>
+              <TooltipIcon
+                id="depth-of-field-toggle-tip"
+                text="Blur sprites based on their distance from a focus plane. Larger sprites (closer) and smaller sprites (farther) get different blur amounts."
+                label="Depth of Field"
+              />
+            </div>
+          </div>
+          <div className="switch-row">
+            <Switch
+              id="depth-of-field-toggle"
+              checked={spriteState.depthOfFieldEnabled}
+              onCheckedChange={(checked) => controller?.setDepthOfFieldEnabled(checked)}
+              disabled={!ready}
+              aria-labelledby="depth-of-field-toggle-label"
+            />
+          </div>
+        </div>
+        {spriteState.depthOfFieldEnabled && (
+          <>
+            <ControlSlider
+              id="depth-focus"
+              label="Focus"
+              min={0}
+              max={100}
+              value={Math.round(spriteState.depthOfFieldFocus)}
+              displayValue={`${Math.round(spriteState.depthOfFieldFocus)}%`}
+              onChange={(value) => controller?.setDepthOfFieldFocus(value)}
+              disabled={!ready}
+              tooltip="Adjusts which depth is in focus. Objects at this depth remain sharp."
+            />
+            <ControlSlider
+              id="depth-strength"
+              label="Blur Strength"
+              min={0}
+              max={100}
+              value={Math.round(spriteState.depthOfFieldStrength)}
+              displayValue={`${Math.round(spriteState.depthOfFieldStrength)}%`}
+              onChange={(value) => controller?.setDepthOfFieldStrength(value)}
+              disabled={!ready}
+              tooltip="Controls how blurry objects become when out of focus. Does not affect objects on the focus plane."
+            />
+          </>
+        )}
+      </div>
+
+      <div className="section section--spaced">
+        <hr className="section-divider" />
         <h3 className="section-title">Rotation</h3>
         <div className="control-field control-field--rotation">
           <div className="field-heading">
